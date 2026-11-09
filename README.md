@@ -2,6 +2,10 @@
 
 Removes secrets from tool output before your AI coding assistant reads it.
 
+> **About this repo.** `redacted-core` is a derivative of [`svn-arv/redacted`](https://github.com/svn-arv/redacted)
+> by sevian, refactored into a Cargo workspace — a pure engine crate plus the original CLI — so the same
+> detection engine can also power a browser extension via WebAssembly. Original work © sevian, MIT-licensed.
+
 ## What you see
 
 ![Claude Code after a cat of .env: the hook reports three scrubbed secrets](docs/images/claude-code.png)
@@ -96,4 +100,5 @@ Other assistants, and whether their hooks can replace tool output, are listed un
 
 ## License
 
-MIT
+MIT. Derived from [`svn-arv/redacted`](https://github.com/svn-arv/redacted) by sevian; the original
+copyright and MIT license are retained.
