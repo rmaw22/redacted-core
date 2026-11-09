@@ -91,6 +91,27 @@ Other assistants, and whether their hooks can replace tool output, are listed un
 - Every pattern scans the full output in turn, after a substring prefilter. Multi-megabyte output adds noticeable latency per call.
 - Commands typed at the Claude Code prompt with `!` are not tool calls. Their output reaches the model unscrubbed.
 
+## How this differs from the upstream
+
+This repo is a **structural refactor** of [`svn-arv/redacted`](https://github.com/svn-arv/redacted) — the
+detection logic and `engine.yml` are unchanged. The single binary crate was split into a Cargo workspace so
+the pure engine can be reused (compiled to WebAssembly for a browser extension) without the CLI's IO:
+
+| | upstream (sevian) | this repo |
+|---|---|---|
+| Shape | one binary crate | Cargo workspace, two crates |
+| Engine | `src/scrub*`, `src/config.rs`, `src/engine.yml` | `crates/redacted-core` — pure, no IO → WASM-safe |
+| CLI | same crate | `crates/redacted-cli` — binary `redacted`, all IO |
+
+What actually changed beyond moving files:
+
+- **`config.rs` is split**: the pure data types live in `redacted-core`; loading/merging config from disk stays in `redacted-cli`.
+- **`learn()` / `derive_shape()` moved into `redacted-core`** so the engine can hash learned secrets itself (also used by the WASM build).
+- New workspace manifests plus `redacted-core`'s `lib.rs`; `scrub.rs` only changed a re-export line.
+
+Behaviour is identical to the upstream — `redacted-cli` builds the same `redacted` binary, and the same engine
+now also powers [`redacted-wasm`](https://github.com/rmaw22/redacted-wasm) → the browser extension.
+
 ## Docs
 
 - [Reference](docs/REFERENCE.md): install methods, `init`, every pattern, configuration and commands.
