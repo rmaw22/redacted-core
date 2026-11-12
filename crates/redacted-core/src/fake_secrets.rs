@@ -250,6 +250,15 @@ pub fn npwp() -> String {
     )
 }
 
+/// A passport number shaped like most countries': a letter and seven digits.
+pub fn passport() -> String {
+    format!(
+        "{}{}",
+        random_from_charset("ABCDEFGHJKLMNPRSTUVWXYZ", 1),
+        digits(7)
+    )
+}
+
 pub fn npm_token() -> String {
     format!("npm_{}", alnum(36))
 }

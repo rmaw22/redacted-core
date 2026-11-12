@@ -128,7 +128,7 @@ fn is_pii_lookalike(pattern_name: &str, matched: &str, text: &str, start: usize)
     let end = start + matched.len();
     match pattern_name {
         "nik" => is_embedded_number(text, start, end) || !pii::is_nik(matched),
-        "npwp" => is_embedded_number(text, start, end),
+        "npwp" | "passport" => is_embedded_number(text, start, end),
         "credit_card" => is_embedded_number(text, start, end) || !pii::is_card_number(matched),
         "iban" => !pii::is_iban(matched),
         "us_ssn" => {

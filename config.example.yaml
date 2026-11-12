@@ -32,9 +32,10 @@ pii:
   phone: false
   credit_card: false # payment card, checked by network prefix and Luhn
   iban: false # checked by country, length and mod-97
-  us_ssn: false # US Social Security number, dashed form
+  us_ssn: false # US Social Security number, dashed or right after the word SSN
   nik: false # Indonesian identity number (also matches a family card number)
-  npwp: false # Indonesian taxpayer number, dotted form
+  npwp: false # Indonesian taxpayer number, dotted or right after the word NPWP
+  passport: false # a passport number right after the word passport or paspor
 
 # Turn off vendor or engine.yml patterns by name (see the table in docs/REFERENCE.md).
 # No effect on learned secrets or the heuristic.

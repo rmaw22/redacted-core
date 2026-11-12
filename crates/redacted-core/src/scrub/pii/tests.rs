@@ -137,6 +137,59 @@ fn identity_rows_redact_in_prose_and_keep_the_words_around_them() {
 }
 
 #[test]
+fn a_bare_number_is_redacted_right_after_the_word_that_names_it() {
+    let scrubber = pii_scrubber();
+    for (input, expected) in [
+        ("SSN 536904399", "SSN [REDACTED:us_ssn]"),
+        ("ssn: 536904399.", "ssn: [REDACTED:us_ssn]."),
+        (
+            "Social Security Number: 536904399",
+            "Social Security Number: [REDACTED:us_ssn]",
+        ),
+        ("NPWP 012345678901000", "NPWP [REDACTED:npwp ...1000]"),
+        (
+            "npwp no. 012345678901000 atas nama",
+            "npwp no. [REDACTED:npwp ...1000] atas nama",
+        ),
+        (
+            "Passport No: A1234567",
+            "Passport No: [REDACTED:passport ...4567]",
+        ),
+        (
+            "paspor nomor X12345678, berlaku",
+            "paspor nomor [REDACTED:passport ...5678], berlaku",
+        ),
+        ("passport=123456789", "passport=[REDACTED:passport ...6789]"),
+    ] {
+        let result = scrubber.scrub(input);
+        assert_eq!(result.text, expected, "{input}");
+        // The finding is the number alone, not the words before it.
+        let finding = &result.findings[0];
+        let value = &input[finding.start..finding.end];
+        assert!(value.chars().all(|c| c.is_ascii_alphanumeric()), "{value}");
+    }
+}
+
+#[test]
+fn a_bare_number_without_its_word_is_left_alone() {
+    let scrubber = pii_scrubber();
+    for input in [
+        // Nine and fifteen bare digits mean nothing on their own.
+        "ref 536904399",
+        "id 012345678901000",
+        "A1234567",
+        // The word is there, the number is not right after it.
+        "passport expires 20301231",
+        "SSN on file, call 536904399",
+        // An SSN the SSA never issues, and a passport glued into a longer token.
+        "SSN 000904399",
+        "passport A1234567_backup",
+    ] {
+        assert_eq!(scrubber.scrub(input).text, input, "{input}");
+    }
+}
+
+#[test]
 fn identity_rows_leave_look_alike_numbers_alone() {
     let scrubber = pii_scrubber();
     for input in [

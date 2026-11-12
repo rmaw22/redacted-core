@@ -254,12 +254,12 @@ impl Scrubber {
         let mut out = String::with_capacity(text.len());
         let mut copied_until = 0;
         let mut replacements = Vec::new();
-        for found in pattern.regex.find_iter(text) {
+        for (found, value_start) in matches_with_value_start(&pattern.regex, text) {
             if self.should_skip_match(pattern, found.as_str(), text, found.end()) {
                 continue;
             }
-            let (kept, marker) = marker_for(pattern, found.as_str());
-            let start = found.start() + kept;
+            let (kept, marker) = marker_for(pattern, &text[value_start..found.end()]);
+            let start = value_start + kept;
             out.push_str(&text[copied_until..start]);
             out.push_str(&marker);
             copied_until = found.end();
@@ -280,6 +280,27 @@ impl Scrubber {
         result.markers.record(&replacements);
         result.add_redactions(&pattern.name, replacements.len());
     }
+}
+
+/// Every match with where its redacted part begins. A row whose regex names a
+/// `value` group is matched by the words before it (`passport A1234567`): the
+/// group, which must end the match, is redacted and the label stays. Without
+/// the group, or in an alternative that does not use it, that is the whole match.
+fn matches_with_value_start<'t>(regex: &Regex, text: &'t str) -> Vec<(regex::Match<'t>, usize)> {
+    if !regex.capture_names().flatten().any(|name| name == "value") {
+        return regex
+            .find_iter(text)
+            .map(|found| (found, found.start()))
+            .collect();
+    }
+    regex
+        .captures_iter(text)
+        .filter_map(|captures| {
+            let found = captures.get(0)?;
+            let value_start = captures.name("value").map_or(found.start(), |v| v.start());
+            Some((found, value_start))
+        })
+        .collect()
 }
 
 /// How many leading bytes of the match stay as they are, and the marker written
