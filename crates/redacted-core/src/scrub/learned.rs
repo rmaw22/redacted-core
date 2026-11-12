@@ -3,7 +3,7 @@
 
 use sha2::{Digest, Sha256};
 
-use super::{ScrubResult, Scrubber, last_chars};
+use super::{Replacement, ScrubResult, Scrubber, last_chars};
 use crate::config::LearnedSecret;
 
 impl Scrubber {
@@ -179,16 +179,26 @@ fn redact_spans(result: &mut ScrubResult, spans: Vec<(usize, usize, &str)>) {
     let text = &result.text;
     let mut out = String::with_capacity(text.len());
     let mut copied_until = 0;
+    let mut replacements = Vec::with_capacity(spans.len());
     for &(start, end, name) in &spans {
         out.push_str(&text[copied_until..start]);
-        match learned_value_hint(&text[start..end]) {
-            Some(hint) => out.push_str(&format!("[REDACTED:{name} ...{hint}]")),
-            None => out.push_str(&format!("[REDACTED:{name}]")),
-        }
+        let marker = match learned_value_hint(&text[start..end]) {
+            Some(hint) => format!("[REDACTED:{name} ...{hint}]"),
+            None => format!("[REDACTED:{name}]"),
+        };
+        out.push_str(&marker);
         copied_until = end;
+        replacements.push(Replacement {
+            name,
+            start,
+            end,
+            written: marker.len(),
+            lead: 0,
+        });
     }
     out.push_str(&text[copied_until..]);
     result.text = out;
+    result.markers.record(&replacements);
     for (_, _, name) in spans {
         result.add_redactions(name, 1);
     }
