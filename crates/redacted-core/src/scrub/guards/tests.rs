@@ -140,6 +140,7 @@ fn a_credentialed_url_keeps_its_own_label_and_never_gains_an_email_marker() {
         pii: crate::config::PiiConfig {
             email: true,
             phone: true,
+            ..Default::default()
         },
         ..Default::default()
     };

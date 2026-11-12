@@ -79,7 +79,8 @@ Other paths:
    - A name in `whitelist` is skipped.
    - `prefilters` (case-sensitive) and `prefilters_ignore_case` (against a lowercased copy) skip a regex when none of its literals appear.
    - `redact_matches` replaces each match unless `should_skip_match` keeps it.
-   - PII rows (`email`, `phone`) carry `opt_in: true` and sit last. `compile_vendor_patterns` drops each one unless its `pii` toggle is on, and `is_pii_lookalike` skips reserved domains, URL logins and numbers glued to versions, IPs or timestamps.
+   - PII rows (`nik`, `npwp`, `credit_card`, `iban`, `us_ssn`, `email`, `phone`) carry `opt_in: true` and sit last. `compile_vendor_patterns` drops each one unless its `pii` toggle is on, and `is_pii_lookalike` skips reserved domains, URL logins and numbers glued to versions, IPs or timestamps.
+   - The identity and payment rows match a shape only. The validators in `src/scrub/pii.rs` then check the fields and check digits (Luhn and network prefix, IBAN mod-97, NIK region and birth date, SSN ranges). They run before `phone`, which would otherwise take the zero-led groups of a spaced card number.
 2. Learned secrets: `scrub_learned` in `src/scrub/learned.rs`.
 3. Entropy heuristic: the `secret_value` pattern, built by `compile_heuristic` only when `heuristic.enabled` is true.
 
@@ -88,6 +89,7 @@ Other paths:
 | Match | Marker |
 | --- | --- |
 | value-only pattern | `[REDACTED:<name> ...<last 4>]` |
+| value-only pattern with `hint: false` (`us_ssn`) | `[REDACTED:<name>]` |
 | keyed pattern (`includes_key: true`) or heuristic | `<key><sep> [REDACTED ...<last 4>]` |
 | learned, value of 12+ characters | `[REDACTED:<name> ...<last 4>]` |
 | learned, shorter value | `[REDACTED:<name>]` |

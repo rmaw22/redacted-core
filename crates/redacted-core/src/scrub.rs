@@ -8,6 +8,7 @@ mod benchmark;
 mod go_regex;
 mod guards;
 mod learned;
+mod pii;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -34,6 +35,13 @@ struct BuiltinPatternYaml {
     prefilters_ignore_case: Vec<String>,
     #[serde(default)]
     opt_in: bool,
+    /// `hint: false` keeps the last four characters out of the marker.
+    #[serde(default = "default_hint")]
+    hint: bool,
+}
+
+fn default_hint() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -50,6 +58,8 @@ struct Pattern {
     prefilters: Vec<String>,
     prefilters_ignore_case: Vec<String>,
     is_heuristic: bool,
+    /// Whether the marker ends with the last four characters of the match.
+    shows_hint: bool,
 }
 
 impl Pattern {
@@ -62,6 +72,7 @@ impl Pattern {
             prefilters: Vec::new(),
             prefilters_ignore_case: Vec::new(),
             is_heuristic: false,
+            shows_hint: true,
         }
     }
 }
@@ -125,12 +136,7 @@ fn compile_vendor_patterns(
     let mut patterns = Vec::new();
     for pattern in builtin {
         // An opt_in row is PII: it runs only when its toggle in `pii` is on.
-        let is_toggled_on = match pattern.name.as_str() {
-            "email" => pii.email,
-            "phone" => pii.phone,
-            _ => false,
-        };
-        if pattern.opt_in && !is_toggled_on {
+        if pattern.opt_in && !pii.is_on(&pattern.name) {
             continue;
         }
         patterns.push(Pattern {
@@ -140,6 +146,7 @@ fn compile_vendor_patterns(
             prefilters: pattern.prefilters,
             prefilters_ignore_case: pattern.prefilters_ignore_case,
             is_heuristic: false,
+            shows_hint: pattern.hint,
         });
     }
     for pattern in user {
@@ -245,11 +252,7 @@ impl Scrubber {
                 out.push_str(found.as_str());
                 continue;
             }
-            out.push_str(&marker_for(
-                &pattern.name,
-                found.as_str(),
-                pattern.includes_key,
-            ));
+            out.push_str(&marker_for(pattern, found.as_str()));
             count += 1;
         }
         if count > 0 {
@@ -260,12 +263,18 @@ impl Scrubber {
     }
 }
 
-fn marker_for(name: &str, matched: &str, includes_key: bool) -> String {
-    if includes_key && let Some(separator_at) = matched.find(['=', ':']) {
+fn marker_for(pattern: &Pattern, matched: &str) -> String {
+    let name = &pattern.name;
+    if pattern.includes_key
+        && let Some(separator_at) = matched.find(['=', ':'])
+    {
         let separator = &matched[separator_at..=separator_at];
         let value = matched[separator_at + 1..].trim_start_matches([' ', '\t']);
         let key = &matched[..separator_at];
         return format!("{key}{separator} [REDACTED ...{}]", last_chars(value, 4));
+    }
+    if !pattern.shows_hint {
+        return format!("[REDACTED:{name}]");
     }
     format!("[REDACTED:{name} ...{}]", last_chars(matched, 4))
 }

@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::{Pattern, Scrubber};
+use super::{Pattern, Scrubber, pii};
 use crate::config::{DEFAULT_MIN_CHAR_CLASSES, DEFAULT_MIN_ENTROPY};
 
 impl Scrubber {
@@ -125,7 +125,17 @@ const UNOWNED_EMAIL_DOMAINS: [&str; 8] = [
 
 /// The PII rows match loose shapes; these are the look-alikes they leave alone.
 fn is_pii_lookalike(pattern_name: &str, matched: &str, text: &str, start: usize) -> bool {
+    let end = start + matched.len();
     match pattern_name {
+        "nik" => is_embedded_number(text, start, end) || !pii::is_nik(matched),
+        "npwp" => is_embedded_number(text, start, end),
+        "credit_card" => is_embedded_number(text, start, end) || !pii::is_card_number(matched),
+        "iban" => !pii::is_iban(matched),
+        "us_ssn" => {
+            is_embedded_number(text, start, end)
+                || is_dash_continued(text, end)
+                || !pii::is_us_ssn(matched)
+        }
         "email" => {
             is_unowned_email(matched)
                 || is_url_userinfo(text, start)
@@ -190,6 +200,12 @@ fn follows_id_key(text: &str, start: usize) -> bool {
     let key = &before[key_start..];
     // Key and number share a line: an id above a phone number says nothing about it.
     !key.is_empty() && !text[key_start..start].contains('\n') && is_id_key(key)
+}
+
+/// `123-45-6789-01`: more dashed digits follow, so this is a longer id, not an SSN.
+fn is_dash_continued(text: &str, end: usize) -> bool {
+    let bytes = text.as_bytes();
+    bytes.get(end) == Some(&b'-') && bytes.get(end + 1).is_some_and(u8::is_ascii_digit)
 }
 
 /// Digits glued to a word, version, IP or timestamp belong to it, not to a phone.
