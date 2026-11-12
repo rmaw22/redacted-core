@@ -187,11 +187,11 @@ pii:
 ```
 
 - `email` catches `local@domain.tld` anywhere in the text.
-- `phone` catches E.164 (`+6281234567890`), `+` country code with spaced or dashed groups (`+44 20 7946 0958`), North American `(415) 555-0123` and `415-555-0123`, and Indonesian local `0812-3456-7890` or `0812 3456 7890`.
+- `phone` catches E.164 (`+6281234567890`), `+` country code with spaced or dashed groups (`+44 20 7946 0958`), North American `(415) 555-0123` and `415-555-0123`, Indonesian local `0812-3456-7890` or `0812 3456 7890`, Indonesian mobile typed as one run (`081234567890`, 10 to 13 digits), and a landline with a bracketed area code (`(021) 5551234`). A number under an id key (`order_id: 081234567890`) is left alone.
 - Not caught:
   - documentation and bot addresses: `example.com`, `example.net`, `example.org`, the `.example`, `.test`, `.invalid` and `.localhost` TLDs, `noreply@` and `no-reply@` senders, `*.noreply.github.com`;
   - the `user@host` part of a URL login (`scheme://user:pass@host`), which the URL patterns own;
-  - ssh-style logins: `user@host:` (scp, git remotes, shell prompts) and `user@host` after `ssh`, `scp`, `sftp`, `rsync` or `ssh-copy-id`. A bare `user@host` with neither is still redacted;
+  - ssh-style logins: `user@host:path` with the path right after the colon (scp, git remotes, shell prompts) and `user@host` after `ssh`, `scp`, `sftp`, `rsync` or `ssh-copy-id`. A bare `user@host` with neither is still redacted;
   - a `+` number at the start of a line in text holding a diff hunk header (`@@ `). Phones on added lines were never caught anyway: their own `+` follows the diff's `+`;
   - bare digit runs, and numbers glued to a word, version, IP or timestamp. A spaced `+` number in code, such as `x = y +12345678`, is still redacted;
   - dotted `415.555.0123`, which the version allow-list claims first, and `1-415-555-0123` without a `+`;

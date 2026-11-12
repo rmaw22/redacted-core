@@ -302,7 +302,19 @@ const PHONE_SHAPES: [&str; 7] = [
 #[test]
 fn pii_on_redacts_a_phone_number_in_every_supported_shape_and_placement() {
     let scrubber = pii_scrubber();
-    for phone in PHONE_SHAPES.into_iter().chain(["0812 3456 7890"]) {
+    // Indonesian numbers as people type them: mobile with and without separators
+    // at every length an operator issues, and a landline with its area code.
+    let indonesian = [
+        "0812 3456 7890",
+        "081234567890",
+        "0812345678",
+        "0812345678901",
+        "0812-345-6789",
+        "0852 1234 567",
+        "(021) 5551234",
+        "(0274) 555-123",
+    ];
+    for phone in PHONE_SHAPES.into_iter().chain(indonesian) {
         let marker = value_only_marker("phone", phone);
         let line = format!("Call {phone} today");
         assert_eq!(scrubber.scrub(phone).text, marker, "{phone}");

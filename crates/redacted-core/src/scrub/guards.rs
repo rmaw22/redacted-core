@@ -134,6 +134,7 @@ fn is_pii_lookalike(pattern_name: &str, matched: &str, text: &str, start: usize)
         "phone" => {
             is_embedded_number(text, start, start + matched.len())
                 || is_diff_added_line(matched, text, start)
+                || follows_id_key(text, start)
         }
         _ => false,
     }
@@ -161,10 +162,15 @@ fn is_url_userinfo(text: &str, start: usize) -> bool {
 const SSH_COMMANDS: [&str; 5] = ["ssh", "scp", "sftp", "rsync", "ssh-copy-id"];
 
 /// `user@host:path` (scp, git remotes, shell prompts) or `ssh user@host` is a login, not a mailbox.
+/// The path must follow the colon directly: in prose (`From ani@mail.com: hi`) a space does.
 fn is_ssh_target(text: &str, start: usize, end: usize) -> bool {
+    let bytes = text.as_bytes();
     let word_before = text[..start].split_whitespace().next_back();
-    text.as_bytes().get(end) == Some(&b':')
-        || word_before.is_some_and(|word| SSH_COMMANDS.contains(&word))
+    let is_path_after = bytes.get(end) == Some(&b':')
+        && bytes
+            .get(end + 1)
+            .is_some_and(|after| !after.is_ascii_whitespace());
+    is_path_after || word_before.is_some_and(|word| SSH_COMMANDS.contains(&word))
 }
 
 /// In a unified diff, a `+` at column 0 marks an added line, not a country code.
@@ -172,6 +178,18 @@ fn is_diff_added_line(matched: &str, text: &str, start: usize) -> bool {
     let is_line_start = start == 0 || text.as_bytes()[start - 1] == b'\n';
     // The text scan runs only for a `+` at column 0, so other matches stay cheap.
     matched.starts_with('+') && is_line_start && (text.starts_with("@@ ") || text.contains("\n@@ "))
+}
+
+/// `order id 555-123-4567` or `"user_id": "0812..."`: a number under an id key is an id.
+fn follows_id_key(text: &str, start: usize) -> bool {
+    let is_key_punctuation = |c: char| c.is_whitespace() || "\"'`:=#".contains(c);
+    let before = text[..start].trim_end_matches(is_key_punctuation);
+    let key_start = before
+        .rfind(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+        .map_or(0, |at| at + 1);
+    let key = &before[key_start..];
+    // Key and number share a line: an id above a phone number says nothing about it.
+    !key.is_empty() && !text[key_start..start].contains('\n') && is_id_key(key)
 }
 
 /// Digits glued to a word, version, IP or timestamp belong to it, not to a phone.
