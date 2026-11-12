@@ -7,7 +7,7 @@ pub(super) fn default_scrubber() -> Scrubber {
     Scrubber::new(&Config::default(), &EngineConfig::default()).unwrap()
 }
 
-/// Both PII toggles on, so the opt-in rows run next to the vendor patterns.
+/// Every PII toggle on, so the opt-in rows run next to the vendor patterns.
 pub(super) fn pii_scrubber() -> Scrubber {
     Scrubber::new(&pii_config(), &EngineConfig::default()).unwrap()
 }
@@ -17,10 +17,26 @@ fn pii_config() -> Config {
         pii: crate::config::PiiConfig {
             email: true,
             phone: true,
+            credit_card: true,
+            iban: true,
+            us_ssn: true,
+            nik: true,
+            npwp: true,
         },
         ..Default::default()
     }
 }
+
+/// The PII rows, each compiled only when its `pii` toggle is on.
+const PII_ROWS: [&str; 7] = [
+    "email",
+    "phone",
+    "credit_card",
+    "iban",
+    "us_ssn",
+    "nik",
+    "npwp",
+];
 
 pub(super) fn value_only_marker(name: &str, secret: &str) -> String {
     format!(
@@ -47,9 +63,13 @@ pub(super) fn builtin_pattern_cases() -> Vec<PatternCase> {
         cases.push(PatternCase {
             name,
             input: secret.clone(),
-            expected: value_only_marker(name, &secret),
+            expected: match name {
+                // `hint: false` in engine.yml.
+                "us_ssn" => "[REDACTED:us_ssn]".to_string(),
+                _ => value_only_marker(name, &secret),
+            },
             secret,
-            opt_in: matches!(name, "email" | "phone"),
+            opt_in: PII_ROWS.contains(&name),
         });
     }
     // includes_key patterns keep the key and separator and drop the label.
@@ -105,6 +125,11 @@ fn generated_secrets() -> Vec<(&'static str, String)> {
         ),
         ("email", fake_secrets::email()),
         ("phone", fake_secrets::phone()),
+        ("credit_card", fake_secrets::credit_card()),
+        ("iban", fake_secrets::iban()),
+        ("us_ssn", fake_secrets::us_ssn()),
+        ("nik", fake_secrets::nik()),
+        ("npwp", fake_secrets::npwp()),
     ]
 }
 

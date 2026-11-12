@@ -95,6 +95,29 @@ fn default_min_entropy() -> f64 {
 pub struct PiiConfig {
     pub email: bool,
     pub phone: bool,
+    pub credit_card: bool,
+    pub iban: bool,
+    pub us_ssn: bool,
+    /// Indonesian national identity number (also matches a family card number).
+    pub nik: bool,
+    /// Indonesian taxpayer number in its dotted form.
+    pub npwp: bool,
+}
+
+impl PiiConfig {
+    /// Whether the toggle named like an engine.yml row is on; an unknown name is off.
+    pub fn is_on(&self, pattern_name: &str) -> bool {
+        match pattern_name {
+            "email" => self.email,
+            "phone" => self.phone,
+            "credit_card" => self.credit_card,
+            "iban" => self.iban,
+            "us_ssn" => self.us_ssn,
+            "nik" => self.nik,
+            "npwp" => self.npwp,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]

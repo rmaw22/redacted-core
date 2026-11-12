@@ -8,11 +8,11 @@ The tool reduces exposure to secrets in tool output. It never prevents it.
 
 - The scrub engine (`Scrubber`) runs in process, not through the hook binary.
 - Two configurations: default (vendor signatures, heuristic off) and heuristic on. No learned secrets in either.
-- The PII rows (`email`, `phone`) are measured in a third configuration with both `pii` toggles on, and are left out of the secret totals.
+- The PII rows are measured in a third configuration with every `pii` toggle on, and are left out of the secret totals.
 - Each built-in pattern gets one fake value per placement, generated at run time by `src/fake_secrets.rs`. Keyed patterns are planted with their key, since the key is part of the match.
 - Each value is planted mid-file in a `corpus/clean/*.txt` file. Files rotate across rows.
 - Caught means at least one new redaction and no 8-character run of the value left outside a redaction marker.
-- Seed 1792136801948421001. Replay with `REDACTED_BENCHMARK_SEED=1792136801948421001`.
+- Seed 1794479604787554001. Replay with `REDACTED_BENCHMARK_SEED=1794479604787554001`.
 
 ## Misses
 
@@ -20,7 +20,7 @@ The tool reduces exposure to secrets in tool output. It never prevents it.
 | --- | --- | --- | --- | --- |
 | JSON nested as escaped string | `private_key_truncated`, `gcp_sa_key_id`, `gcp_sa_private_key` | 3 | 3 | 0 |
 | URL path segment | `email` (PII on) | 0 | 0 | 1 |
-| mid-token | `twilio_api_key`, `twilio_account_sid`, `credentialed_url`, `openai_classic_key`, `auth_header` | 5 | 5 | 0 |
+| mid-token | `twilio_api_key`, `twilio_account_sid`, `credentialed_url`, `openai_classic_key`, `auth_header`, `credit_card` (PII on), `iban` (PII on), `us_ssn` (PII on), `nik` (PII on), `npwp` (PII on) | 5 | 5 | 5 |
 
 Expected-miss placements (base64, line-wrapped) appear in the recall table only.
 
@@ -44,33 +44,33 @@ Expected-miss placements (base64, line-wrapped) appear in the recall table only.
 | trailing period | harder | 46/46 (100.0%) | 46/46 (100.0%) |
 | trailing comma | harder | 46/46 (100.0%) | 46/46 (100.0%) |
 | base64 of the line | expected miss | 0/46 (0.0%) | 0/46 (0.0%) |
-| line-wrapped at 40 | expected miss | 5/46 (10.9%) | 9/46 (19.6%) |
+| line-wrapped at 40 | expected miss | 5/46 (10.9%) | 8/46 (17.4%) |
 | all plain placements | plain | 460/460 (100.0%) | 460/460 (100.0%) |
-| all placements | all | 687/782 (87.9%) | 691/782 (88.4%) |
+| all placements | all | 687/782 (87.9%) | 690/782 (88.2%) |
 
-## Opt-in PII rows (both toggles on)
+## Opt-in PII rows (every toggle on)
 
 | Placement | Group | PII on |
 | --- | --- | --- |
-| env line | plain | 2/2 (100.0%) |
-| shell export | plain | 2/2 (100.0%) |
-| JSON value | plain | 2/2 (100.0%) |
-| JSON nested as escaped string | harder | 2/2 (100.0%) |
-| URL query parameter | plain | 2/2 (100.0%) |
-| URL path segment | harder | 1/2 (50.0%) |
-| git diff added line | plain | 2/2 (100.0%) |
-| log line | plain | 2/2 (100.0%) |
-| YAML value | plain | 2/2 (100.0%) |
-| markdown inline code | plain | 2/2 (100.0%) |
-| quoted in error message | plain | 2/2 (100.0%) |
-| CSV field | plain | 2/2 (100.0%) |
-| mid-token | harder | 2/2 (100.0%) |
-| trailing period | harder | 2/2 (100.0%) |
-| trailing comma | harder | 2/2 (100.0%) |
-| base64 of the line | expected miss | 0/2 (0.0%) |
-| line-wrapped at 40 | expected miss | 2/2 (100.0%) |
-| all plain placements | plain | 20/20 (100.0%) |
-| all placements | all | 31/34 (91.2%) |
+| env line | plain | 7/7 (100.0%) |
+| shell export | plain | 7/7 (100.0%) |
+| JSON value | plain | 7/7 (100.0%) |
+| JSON nested as escaped string | harder | 7/7 (100.0%) |
+| URL query parameter | plain | 7/7 (100.0%) |
+| URL path segment | harder | 6/7 (85.7%) |
+| git diff added line | plain | 7/7 (100.0%) |
+| log line | plain | 7/7 (100.0%) |
+| YAML value | plain | 7/7 (100.0%) |
+| markdown inline code | plain | 7/7 (100.0%) |
+| quoted in error message | plain | 7/7 (100.0%) |
+| CSV field | plain | 7/7 (100.0%) |
+| mid-token | harder | 2/7 (28.6%) |
+| trailing period | harder | 7/7 (100.0%) |
+| trailing comma | harder | 7/7 (100.0%) |
+| base64 of the line | expected miss | 0/7 (0.0%) |
+| line-wrapped at 40 | expected miss | 7/7 (100.0%) |
+| all plain placements | plain | 70/70 (100.0%) |
+| all placements | all | 106/119 (89.1%) |
 
 Excludes the expected-miss placements (base64, line-wrapped).
 
@@ -78,6 +78,11 @@ Excludes the expected-miss placements (base64, line-wrapped).
 | --- | --- |
 | `email` | 14/15 (93.3%) |
 | `phone` | 15/15 (100.0%) |
+| `credit_card` | 14/15 (93.3%) |
+| `iban` | 14/15 (93.3%) |
+| `us_ssn` | 14/15 (93.3%) |
+| `nik` | 14/15 (93.3%) |
+| `npwp` | 14/15 (93.3%) |
 
 ## Recall by pattern
 
@@ -118,7 +123,7 @@ Redactions in files that hold no secret. Zero is correct.
 ## How to reproduce
 
 ```bash
-REDACTED_BENCHMARK_SEED=1792136801948421001 REDACTED_BENCHMARK_REPORT=docs/BENCHMARK.md cargo test detection_benchmark
+REDACTED_BENCHMARK_SEED=1794479604787554001 REDACTED_BENCHMARK_REPORT=docs/BENCHMARK.md cargo test detection_benchmark
 ```
 
 ## What this does not show

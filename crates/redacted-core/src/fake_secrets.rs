@@ -187,6 +187,69 @@ pub fn phone() -> String {
     format!("+1 {area_code} 555 01{}", digits(2))
 }
 
+/// A Visa-shaped number with a valid Luhn check digit: random, so no account is behind it.
+pub fn credit_card() -> String {
+    let body = format!("4{}", digits(14));
+    let sum: u32 = body
+        .chars()
+        .rev()
+        .filter_map(|c| c.to_digit(10))
+        .enumerate()
+        .map(|(position, digit)| match (position % 2, digit * 2) {
+            (1, _) => digit,
+            (_, doubled) if doubled > 9 => doubled - 9,
+            (_, doubled) => doubled,
+        })
+        .sum();
+    format!("{body}{}", (10 - sum % 10) % 10)
+}
+
+/// A British-shaped IBAN with valid mod-97 check digits over a random account.
+pub fn iban() -> String {
+    let account = format!(
+        "{}{}",
+        random_from_charset("ABCDEFGHJKLMNPRSTUVWXYZ", 4),
+        digits(14)
+    );
+    // Check digits are 98 minus the remainder of the account followed by GB00.
+    let remainder = format!("{account}GB00")
+        .bytes()
+        .fold(0u32, |remainder, byte| {
+            if byte.is_ascii_digit() {
+                (remainder * 10 + u32::from(byte - b'0')) % 97
+            } else {
+                (remainder * 100 + u32::from(byte - b'A') + 10) % 97
+            }
+        });
+    format!("GB{:02}{account}", 98 - remainder)
+}
+
+/// A dashed US SSN with an area, group and serial the SSA could issue.
+pub fn us_ssn() -> String {
+    let area = format!("{}{}", random_from_charset("12345", 1), digits(2));
+    format!("{area}-1{}-1{}", digits(1), digits(3))
+}
+
+/// An Indonesian NIK: a Jakarta region code, a birth date and a serial.
+pub fn nik() -> String {
+    let day = format!("1{}", digits(1));
+    let month = format!("0{}", random_from_charset("123456789", 1));
+    format!("317405{day}{month}{}1{}", digits(2), digits(3))
+}
+
+/// An Indonesian NPWP in its dotted form.
+pub fn npwp() -> String {
+    format!(
+        "{}.{}.{}.{}-{}.{}",
+        digits(2),
+        digits(3),
+        digits(3),
+        digits(1),
+        digits(3),
+        digits(3)
+    )
+}
+
 pub fn npm_token() -> String {
     format!("npm_{}", alnum(36))
 }

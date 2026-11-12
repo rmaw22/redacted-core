@@ -25,11 +25,16 @@ heuristic:
   min_char_classes: 3 # of lowercase, uppercase, digit
   min_entropy: 3.5 # Shannon entropy, bits per character
 
-# Opt-in PII tier: email addresses and phone numbers. Read from the global file only.
+# Opt-in PII tier: contact, payment and identity numbers. Read from the global file only.
 # An absent toggle is off. Keep your own address visible with allow_values in engine.yml.
 pii:
   email: false
   phone: false
+  credit_card: false # payment card, checked by network prefix and Luhn
+  iban: false # checked by country, length and mod-97
+  us_ssn: false # US Social Security number, dashed form
+  nik: false # Indonesian identity number (also matches a family card number)
+  npwp: false # Indonesian taxpayer number, dotted form
 
 # Turn off vendor or engine.yml patterns by name (see the table in docs/REFERENCE.md).
 # No effect on learned secrets or the heuristic.

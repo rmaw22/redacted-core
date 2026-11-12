@@ -233,7 +233,7 @@ fn header(seed: u64) -> String {
          ## What is measured and how\n\n\
          - The scrub engine (`Scrubber`) runs in process, not through the hook binary.\n\
          - Two configurations: default (vendor signatures, heuristic off) and heuristic on. No learned secrets in either.\n\
-         - The PII rows (`email`, `phone`) are measured in a third configuration with both `pii` toggles on, and are left out of the secret totals.\n\
+         - The PII rows are measured in a third configuration with every `pii` toggle on, and are left out of the secret totals.\n\
          - Each built-in pattern gets one fake value per placement, generated at run time by `src/fake_secrets.rs`. Keyed patterns are planted with their key, since the key is part of the match.\n\
          - Each value is planted mid-file in a `corpus/clean/*.txt` file. Files rotate across rows.\n\
          - Caught means at least one new redaction and no 8-character run of the value left outside a redaction marker.\n\
@@ -303,10 +303,10 @@ fn placement_section(default: &[Outcome], heuristic: &[Outcome]) -> String {
     out + "\n"
 }
 
-/// PII rows run with both toggles on, apart from the secret tables.
+/// PII rows run with every toggle on, apart from the secret tables.
 fn pii_section(pii: &[Outcome]) -> String {
     let mut out = String::from(
-        "## Opt-in PII rows (both toggles on)\n\n| Placement | Group | PII on |\n| --- | --- | --- |\n",
+        "## Opt-in PII rows (every toggle on)\n\n| Placement | Group | PII on |\n| --- | --- | --- |\n",
     );
     let mut row = |label: &str, group: &str, keep: &dyn Fn(&Outcome) -> bool| {
         let rate = recall(pii.iter().filter(|o| keep(o)));
