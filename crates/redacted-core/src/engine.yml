@@ -264,9 +264,12 @@ patterns:
     prefilters: ['@']
     opt_in: true
 
-  # E.164, +country with groups, North American, and Indonesian local; never a
-  # bare digit run. A guard drops numbers glued to a word, version, IP or time.
+  # E.164, +country with groups, North American, and Indonesian local, landline
+  # with a bracketed area code, and mobile. The only bare digit run is the
+  # Indonesian mobile (08 + operator digit, 10 to 13 digits), the way it is
+  # usually typed. A guard drops numbers glued to a word, version, IP or time,
+  # and numbers under an id key.
   # No dotted 415.555.0123 form: the version allow_value above claims it first.
   - name: phone
-    regex: '\+[1-9][0-9]{7,14}\b|\+[1-9][0-9]{0,2}(?:[ -][0-9]{2,4}){2,4}\b|\([2-9][0-9]{2}\) ?[0-9]{3}-[0-9]{4}\b|[2-9][0-9]{2}-[0-9]{3}-[0-9]{4}\b|0[0-9]{3}(?:-[0-9]{4}-| [0-9]{4} )[0-9]{3,4}\b'
+    regex: '\+[1-9][0-9]{7,14}\b|\+[1-9][0-9]{0,2}(?:[ -][0-9]{2,4}){2,4}\b|\([2-9][0-9]{2}\) ?[0-9]{3}-[0-9]{4}\b|[2-9][0-9]{2}-[0-9]{3}-[0-9]{4}\b|0[0-9]{3}(?:-[0-9]{4}-| [0-9]{4} )[0-9]{3,4}\b|08[1-9][0-9]{1,2}[ -]?[0-9]{3,4}[ -]?[0-9]{3,4}\b|\(0[0-9]{2,3}\) ?[0-9]{3,4}[ -]?[0-9]{3,4}\b'
     opt_in: true

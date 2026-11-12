@@ -89,6 +89,37 @@ fn pii_leaves_ssh_targets_and_shell_prompts_alone() {
 }
 
 #[test]
+fn pii_redacts_an_email_that_prose_follows_with_a_colon() {
+    // A space or the end of the text after the colon is punctuation, not a remote path.
+    let scrubber = pii_scrubber();
+    let address = fake_secrets::email();
+    for input in [
+        format!("From {address}: are we still on?"),
+        format!("Reply to {address}:\nthanks"),
+        format!("cc {address}:"),
+    ] {
+        let result = scrubber.scrub(&input);
+        assert!(!result.text.contains(&address), "{input}");
+    }
+}
+
+#[test]
+fn pii_leaves_a_number_under_an_id_key_alone() {
+    let scrubber = pii_scrubber();
+    for input in [
+        "order id 555-123-4567 qty 3",
+        "order_id: 081234567890",
+        r#"{"userId": "081234567890"}"#,
+        "ticket-id=415-555-0123",
+    ] {
+        assert_eq!(scrubber.scrub(input).text, input, "{input}");
+    }
+    // The id key sits on the line above, so it does not own this number.
+    let contact = scrubber.scrub("id\n081234567890");
+    assert_eq!(contact.text, "id\n[REDACTED:phone ...7890]");
+}
+
+#[test]
 fn pii_leaves_added_lines_of_a_unified_diff_alone() {
     // The diff's own `+` makes any number on an added line read as international.
     let diff = "@@ -1,3 +1,3 @@\n+123 456 789\n+10-16-2026\n+1234567890\n";
