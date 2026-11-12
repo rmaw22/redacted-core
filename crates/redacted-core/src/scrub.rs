@@ -5,6 +5,7 @@
 // file calls from them (and the shared test helpers) is marked `pub(super)`.
 #[cfg(test)]
 mod benchmark;
+mod findings;
 mod go_regex;
 mod guards;
 mod learned;
@@ -16,6 +17,8 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::config::{Config, CustomPattern, EngineConfig, HeuristicConfig, PiiConfig};
+pub use findings::Finding;
+use findings::{MarkerLog, Replacement};
 use go_regex::go_to_rust_regex;
 // Re-exported so callers write `scrub::sha256_hex`, not `scrub::learned::sha256_hex`.
 pub use guards::percent_decode;
@@ -98,12 +101,17 @@ pub struct Scrubber {
     heuristic_thresholds: HeuristicConfig,
 }
 
-/// The rewritten text plus how many redactions each pattern made.
+/// The rewritten text, how many redactions each pattern made, and where each
+/// one sat in the text that was passed in.
 #[derive(Debug, Default)]
 pub struct ScrubResult {
     pub text: String,
     pub count: usize,
     pub counts_by_pattern: BTreeMap<String, usize>,
+    /// In text order, never overlapping. Offsets are bytes into the original.
+    pub findings: Vec<Finding>,
+    /// Filled while the tiers run, then turned into `findings`.
+    markers: MarkerLog,
 }
 
 impl ScrubResult {
@@ -230,53 +238,68 @@ impl Scrubber {
                     continue;
                 }
             }
-            let redactions = self.redact_matches(pattern, &mut result.text);
-            result.add_redactions(&pattern.name, redactions);
+            self.redact_matches(pattern, &mut result);
         }
         self.scrub_learned(&mut result);
         if let Some(pattern) = &self.heuristic_pattern {
-            let redactions = self.redact_matches(pattern, &mut result.text);
-            result.add_redactions(&pattern.name, redactions);
+            self.redact_matches(pattern, &mut result);
         }
+        result.findings = std::mem::take(&mut result.markers).into_findings();
         result
     }
 
-    /// Returns the redaction count; `text` is rewritten only when it is above zero.
-    fn redact_matches(&self, pattern: &Pattern, text: &mut String) -> usize {
+    /// Rewrites every match the guards let through; the text is left as it is when there is none.
+    fn redact_matches(&self, pattern: &Pattern, result: &mut ScrubResult) {
+        let text = &result.text;
         let mut out = String::with_capacity(text.len());
-        let (mut copied_until, mut count) = (0, 0);
+        let mut copied_until = 0;
+        let mut replacements = Vec::new();
         for found in pattern.regex.find_iter(text) {
-            out.push_str(&text[copied_until..found.start()]);
-            copied_until = found.end();
             if self.should_skip_match(pattern, found.as_str(), text, found.end()) {
-                out.push_str(found.as_str());
                 continue;
             }
-            out.push_str(&marker_for(pattern, found.as_str()));
-            count += 1;
+            let (kept, marker) = marker_for(pattern, found.as_str());
+            let start = found.start() + kept;
+            out.push_str(&text[copied_until..start]);
+            out.push_str(&marker);
+            copied_until = found.end();
+            let replaced = &text[start..found.end()];
+            replacements.push(Replacement {
+                name: &pattern.name,
+                start,
+                end: found.end(),
+                written: marker.len(),
+                lead: replaced.len() - replaced.trim_start_matches([' ', '\t']).len(),
+            });
         }
-        if count > 0 {
-            out.push_str(&text[copied_until..]);
-            *text = out;
+        if replacements.is_empty() {
+            return;
         }
-        count
+        out.push_str(&text[copied_until..]);
+        result.text = out;
+        result.markers.record(&replacements);
+        result.add_redactions(&pattern.name, replacements.len());
     }
 }
 
-fn marker_for(pattern: &Pattern, matched: &str) -> String {
+/// How many leading bytes of the match stay as they are, and the marker written
+/// over the rest. A keyed match keeps its key and separator.
+fn marker_for(pattern: &Pattern, matched: &str) -> (usize, String) {
     let name = &pattern.name;
     if pattern.includes_key
         && let Some(separator_at) = matched.find(['=', ':'])
     {
-        let separator = &matched[separator_at..=separator_at];
         let value = matched[separator_at + 1..].trim_start_matches([' ', '\t']);
-        let key = &matched[..separator_at];
-        return format!("{key}{separator} [REDACTED ...{}]", last_chars(value, 4));
+        let marker = format!(" [REDACTED ...{}]", last_chars(value, 4));
+        return (separator_at + 1, marker);
     }
     if !pattern.shows_hint {
-        return format!("[REDACTED:{name}]");
+        return (0, format!("[REDACTED:{name}]"));
     }
-    format!("[REDACTED:{name} ...{}]", last_chars(matched, 4))
+    (
+        0,
+        format!("[REDACTED:{name} ...{}]", last_chars(matched, 4)),
+    )
 }
 
 fn last_chars(text: &str, count: usize) -> &str {

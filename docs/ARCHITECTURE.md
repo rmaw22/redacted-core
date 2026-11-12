@@ -40,6 +40,8 @@ stdin -> cli::run_scrub -> looks_like_hook_payload?
 | `src/scrub.rs` | `Scrubber`: builds every tier, runs vendor patterns and the heuristic, writes markers. |
 | `src/scrub/learned.rs` | Learned tier: shape and exact-hash matching, `sha256_hex`, `learned_value_hint`. |
 | `src/scrub/guards.rs` | `should_skip_match`: allow lists and the guards that keep identifiers, code and URLs. |
+| `src/scrub/pii.rs` | Validators for the identity and payment PII rows: card, IBAN, SSN, NIK. |
+| `src/scrub/findings.rs` | `Finding` and `MarkerLog`: where each redaction sat in the original text. |
 | `src/scrub/go_regex.rs` | `go_to_rust_regex`: rewrites Go RE2 syntax so patterns keep their 0.7 meaning under Rust `regex`. |
 | `src/scrub/benchmark.rs` | Test only (`#[cfg(test)]`): detection benchmark that plants each built-in pattern in 17 placements and writes `docs/BENCHMARK.md`. |
 | `src/engine.yml` | Built-in patterns and `allow_values`, compiled in with `include_str!`. |
@@ -95,6 +97,15 @@ Other paths:
 | learned, shorter value | `[REDACTED:<name>]` |
 
 The hint counts characters, not bytes.
+
+## Findings
+
+`ScrubResult.findings` lists every redaction as a `Finding`: the pattern name and the byte range it replaced in the text passed to `scrub`. They come in text order and never overlap.
+
+- Each tier runs on the text the tier before it rewrote, so a match sits at an offset in half-redacted text. `MarkerLog` in `src/scrub/findings.rs` keeps every marker's place in that text next to the original range it stands for, and `record` translates each tier's rewrites back through them.
+- A keyed finding is the value alone. The key, the separator and the blanks after it are outside the range.
+- A rewrite that covers or cuts into an earlier marker takes that marker's original bytes as its own and the earlier finding is dropped, so `findings` can be shorter than `count`.
+- Offsets are bytes. A caller with UTF-16 strings, such as the WASM binding, converts them.
 
 ## Learned matching
 
