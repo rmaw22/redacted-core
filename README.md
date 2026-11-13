@@ -1,4 +1,9 @@
-# redacted
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.png">
+    <img src="docs/images/logo-light.png" alt="redacted" width="280">
+  </picture>
+</h1>
 
 Removes secrets from tool output before your AI coding assistant reads it.
 
