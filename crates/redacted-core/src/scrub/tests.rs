@@ -22,13 +22,14 @@ fn pii_config() -> Config {
             us_ssn: true,
             nik: true,
             npwp: true,
+            passport: true,
         },
         ..Default::default()
     }
 }
 
 /// The PII rows, each compiled only when its `pii` toggle is on.
-const PII_ROWS: [&str; 7] = [
+const PII_ROWS: [&str; 8] = [
     "email",
     "phone",
     "credit_card",
@@ -36,6 +37,7 @@ const PII_ROWS: [&str; 7] = [
     "us_ssn",
     "nik",
     "npwp",
+    "passport",
 ];
 
 pub(super) fn value_only_marker(name: &str, secret: &str) -> String {
@@ -72,6 +74,15 @@ pub(super) fn builtin_pattern_cases() -> Vec<PatternCase> {
             opt_in: PII_ROWS.contains(&name),
         });
     }
+    // A row matched by the words before it keeps them and redacts the value.
+    let passport = fake_secrets::passport();
+    cases.push(PatternCase {
+        name: "passport",
+        input: format!("passport {passport}"),
+        expected: format!("passport {}", value_only_marker("passport", &passport)),
+        secret: passport,
+        opt_in: true,
+    });
     // includes_key patterns keep the key and separator and drop the label.
     for (name, key, sep, value) in keyed_secrets() {
         let expected = format!(

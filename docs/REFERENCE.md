@@ -189,21 +189,24 @@ pii:
   us_ssn: true # marker [REDACTED:us_ssn]
   nik: true # marker [REDACTED:nik ...0004]
   npwp: true # marker [REDACTED:npwp ....000]
+  passport: true # marker [REDACTED:passport ...4567]
 ```
 
 - `email` catches `local@domain.tld` anywhere in the text.
 - `phone` catches E.164 (`+6281234567890`), `+` country code with spaced or dashed groups (`+44 20 7946 0958`), North American `(415) 555-0123` and `415-555-0123`, Indonesian local `0812-3456-7890` or `0812 3456 7890`, Indonesian mobile typed as one run (`081234567890`, 10 to 13 digits), and a landline with a bracketed area code (`(021) 5551234`). A number under an id key (`order_id: 081234567890`) is left alone.
 - `credit_card` catches a payment card of 13 to 19 digits, as one run or in groups split by a space or dash (`4539 1488 0343 6467`, American Express `3400 000000 00009`). The number must start with a Visa, Mastercard, American Express, Discover, JCB, Diners Club or UnionPay prefix at that network's length and pass the Luhn check. The networks' published test numbers (`4242 4242 4242 4242`, `4111 1111 1111 1111` and the like) are left alone.
 - `iban` catches an IBAN as one run (`DE89370400440532013000`) or in print form (`GB82 WEST 1234 5698 7654 32`). The country must be in the IBAN registry, the length must be that country's, and the mod-97 check digits must hold.
-- `us_ssn` catches a dashed US Social Security number (`536-90-4399`) whose area is not `000`, `666` or `900`-`999`, whose group is not `00` and whose serial is not `0000`. Its marker has no last-four hint, since those digits identify a person on their own.
+- `us_ssn` catches a dashed US Social Security number (`536-90-4399`), or nine bare digits right after the words `SSN` or `Social Security` (`number`, `no.`), as in `SSN: 536904399`. Either way the area must not be `000`, `666` or `900`-`999`, the group not `00` and the serial not `0000`. Its marker has no last-four hint, since those digits identify a person on their own.
 - `nik` catches an Indonesian national identity number: 16 digits that open with a province code, hold a non-zero regency and district code and a birth date as `DDMMYY` (a woman's day is stored plus 40), and end in a non-zero serial. A family card number (KK) has the same layout and is caught under the same name.
-- `npwp` catches an Indonesian taxpayer number in its dotted form, `01.234.567.8-901.000`.
+- `npwp` catches an Indonesian taxpayer number in its dotted form, `01.234.567.8-901.000`, or 15 or 16 bare digits right after the word `NPWP` (`no.`, `nomor`), as in `NPWP 012345678901000`.
+- `passport` catches a passport number only right after the word `passport` or `paspor` (`no.`, `number`, `nomor`): one or two letters and 6 to 8 digits, or 8 to 9 digits, as in `Passport No: A1234567`. Formats differ by country and none can be checked, so the word is what makes it a passport.
+- In the labeled forms the word stays and only the number is redacted. Up to four blanks or `: # = -` may sit between them; `passport number is A1234567` is not matched.
 - Limits of the identity and payment rows:
-  - a 9-digit SSN, a 15-digit NPWP or any other number typed without its separators, apart from cards, IBANs and NIKs;
+  - a 9-digit SSN, a 15-digit NPWP or a passport number with no word naming it;
   - a 16-digit number that happens to pass the NIK field checks, such as some microsecond timestamps, is redacted as a NIK. The 16-digit NPWP that individuals now use is their NIK, and is caught as one;
   - a card that also reads as a NIK is labeled `nik` when both are on. It is still redacted;
   - an IBAN in print form directly followed by a four-character uppercase word is read as one longer number and fails the length check;
-  - passports, driving licences, bank account numbers outside IBAN, and national ids of other countries.
+  - driving licences, bank account numbers outside IBAN, and national ids of other countries.
 - Not caught by `email` and `phone`:
   - documentation and bot addresses: `example.com`, `example.net`, `example.org`, the `.example`, `.test`, `.invalid` and `.localhost` TLDs, `noreply@` and `no-reply@` senders, `*.noreply.github.com`;
   - the `user@host` part of a URL login (`scheme://user:pass@host`), which the URL patterns own;

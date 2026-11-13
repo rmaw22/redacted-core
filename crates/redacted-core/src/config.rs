@@ -100,8 +100,10 @@ pub struct PiiConfig {
     pub us_ssn: bool,
     /// Indonesian national identity number (also matches a family card number).
     pub nik: bool,
-    /// Indonesian taxpayer number in its dotted form.
+    /// Indonesian taxpayer number, dotted or after the word NPWP.
     pub npwp: bool,
+    /// A passport number right after the word passport or paspor.
+    pub passport: bool,
 }
 
 impl PiiConfig {
@@ -115,6 +117,7 @@ impl PiiConfig {
             "us_ssn" => self.us_ssn,
             "nik" => self.nik,
             "npwp" => self.npwp,
+            "passport" => self.passport,
             _ => false,
         }
     }
