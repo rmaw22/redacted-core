@@ -111,10 +111,10 @@ pub fn learned_value_hint(value: &str) -> Option<&str> {
     Some(last_chars(value, 4))
 }
 
-/// Turns a name and its secret value into a `LearnedSecret`: the value's sha256,
-/// its byte length and, for values with a literal prefix, a shape regex that also
-/// catches rotated keys. The raw value is never stored. Rejects values with
-/// whitespace or under eight characters.
+/// Turns a name and its secret value into a `LearnedSecret`: the value's sha256
+/// and byte length, never the raw value. No shape: its regex keeps the value's
+/// prefix in plain text, so a caller adds `derive_shape` only on the user's
+/// opt-in. Rejects values with whitespace or under eight characters.
 pub fn learn(key: &str, value: &str) -> Result<LearnedSecret, &'static str> {
     if value.contains(char::is_whitespace) {
         return Err("cannot match (contains spaces)");
@@ -126,7 +126,7 @@ pub fn learn(key: &str, value: &str) -> Result<LearnedSecret, &'static str> {
         name: key.to_lowercase(),
         sha256: sha256_hex(value),
         byte_len: value.len(),
-        shape: derive_shape(value),
+        shape: None,
     })
 }
 
@@ -135,22 +135,8 @@ pub fn learn(key: &str, value: &str) -> Result<LearnedSecret, &'static str> {
 /// the tail, so a rotated key of the same shape still matches. None when there is
 /// no short separated prefix or the tail holds non-token characters.
 pub fn derive_shape(sample: &str) -> Option<String> {
-    // Byte index of the 13th char, so the slice never splits a multi-byte char.
-    let head_end = sample
-        .char_indices()
-        .nth(12)
-        .map_or(sample.len(), |(i, _)| i);
-    let prefix_end = sample[..head_end].rfind(['_', '-'])? + 1;
-    let (prefix, rest) = sample.split_at(prefix_end);
-    if prefix.chars().count() < 3 || rest.is_empty() {
-        return None;
-    }
-    if !rest
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-    {
-        return None;
-    }
+    let prefix = shape_prefix(sample)?;
+    let rest = &sample[prefix.len()..];
     let charset: String = [
         (rest.chars().any(|c| c.is_ascii_lowercase()), "a-z"),
         (rest.chars().any(|c| c.is_ascii_uppercase()), "A-Z"),
@@ -169,6 +155,28 @@ pub fn derive_shape(sample: &str) -> Option<String> {
         rest_len.saturating_sub(4).max(1),
         rest_len + 4
     ))
+}
+
+/// The literal prefix `derive_shape` would store in plain text, so a caller can
+/// show it before the user opts in. None when the value gets no shape.
+pub fn shape_prefix(sample: &str) -> Option<&str> {
+    // Byte index of the 13th char, so the slice never splits a multi-byte char.
+    let head_end = sample
+        .char_indices()
+        .nth(12)
+        .map_or(sample.len(), |(i, _)| i);
+    let prefix_end = sample[..head_end].rfind(['_', '-'])? + 1;
+    let (prefix, rest) = sample.split_at(prefix_end);
+    if prefix.chars().count() < 3 || rest.is_empty() {
+        return None;
+    }
+    if !rest
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return None;
+    }
+    Some(prefix)
 }
 
 /// Rewrites sorted, non-overlapping spans as learned markers.

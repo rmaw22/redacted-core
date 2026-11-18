@@ -15,7 +15,7 @@ use serde_json::Value;
 use crate::cli::Format;
 use crate::config::{self, LearnedSecret};
 use crate::{opencode, settings};
-use redacted_core::scrub::{learn, learned_value_hint, percent_decode};
+use redacted_core::scrub::{derive_shape, learn, learned_value_hint, percent_decode, shape_prefix};
 
 /// Prompting happens only here and in the steps below; every function they call
 /// is tested without a TTY.
@@ -68,6 +68,7 @@ fn learn_from_env(path: &Path, home: &Path) -> Result<(), String> {
     }
     let known = config::load(Some(home), None)?.learned;
     let chosen = pick_secrets_to_learn(&pairs, &known)?;
+    let chosen = pick_rotated_keys(chosen, &known)?;
     let config_path = config::global_config_path(home);
     let existing = match fs::read_to_string(&config_path) {
         Ok(s) => s,
@@ -93,12 +94,15 @@ fn learn_from_env(path: &Path, home: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// The secrets the user ticks among `pairs`, with likely and `known` secrets
-/// ticked up front.
-fn pick_secrets_to_learn(
-    pairs: &[(String, String)],
+/// A ticked `(key, value)` pair and its hash-only entry.
+type Chosen<'a> = (&'a (String, String), LearnedSecret);
+
+/// The secrets the user ticks among `pairs`, each with its pair, with likely and
+/// `known` secrets ticked up front.
+fn pick_secrets_to_learn<'a>(
+    pairs: &'a [(String, String)],
     known: &[LearnedSecret],
-) -> Result<Vec<LearnedSecret>, String> {
+) -> Result<Vec<Chosen<'a>>, String> {
     let learn_results: Vec<_> = pairs.iter().map(|(key, value)| learn(key, value)).collect();
     let rows: Vec<String> = pairs
         .iter()
@@ -117,11 +121,60 @@ fn pick_secrets_to_learn(
         .raw_prompt()
         .map_err(|e| e.to_string())?;
     // Ticked rows that cannot be learned are skipped, not written.
-    let chosen: Vec<LearnedSecret> = picked
+    let chosen = picked
         .iter()
-        .filter_map(|picked_row| learn_results[picked_row.index].clone().ok())
+        .filter_map(|picked_row| {
+            let entry = learn_results[picked_row.index].clone().ok()?;
+            Some((&pairs[picked_row.index], entry))
+        })
         .collect();
     Ok(chosen)
+}
+
+/// The chosen entries, with a shape on those the user ticks in a second step.
+/// Nothing is ticked up front: a shape stores the value's prefix in plain text,
+/// so each row shows that prefix.
+fn pick_rotated_keys(
+    chosen: Vec<Chosen>,
+    known: &[LearnedSecret],
+) -> Result<Vec<LearnedSecret>, String> {
+    // A value already in the config is not written again, so its shape could not be either.
+    let offered: Vec<usize> = (0..chosen.len())
+        .filter(|&i| {
+            let ((_, value), entry) = &chosen[i];
+            shape_prefix(value).is_some() && !known.iter().any(|k| k.sha256 == entry.sha256)
+        })
+        .collect();
+    let mut ticked = Vec::new();
+    if !offered.is_empty() {
+        let rows: Vec<String> = offered
+            .iter()
+            .map(|&i| rotated_key_row(&chosen[i].0.0, &chosen[i].0.1))
+            .collect();
+        let picked = MultiSelect::new("Also catch rotated keys for:", rows)
+            .with_help_message("optional; skip with enter")
+            .raw_prompt()
+            .map_err(|e| e.to_string())?;
+        ticked = picked.iter().map(|row| offered[row.index]).collect();
+    }
+    Ok(chosen
+        .into_iter()
+        .enumerate()
+        .map(|(i, ((_, value), entry))| {
+            let shape = if ticked.contains(&i) {
+                derive_shape(value)
+            } else {
+                None
+            };
+            LearnedSecret { shape, ..entry }
+        })
+        .collect())
+}
+
+/// A row of the rotated-keys step: the prefix a shape would store as is.
+fn rotated_key_row(key: &str, value: &str) -> String {
+    let prefix = shape_prefix(value).unwrap_or_default();
+    format!("{key}  stores \"{prefix}\" in plain text")
 }
 
 /// Registers the hook globally or for this project, then warns when only the
@@ -290,10 +343,7 @@ fn picker_row(
         Some(hint) => format!("...{hint}"),
         None => "(short)".to_string(),
     };
-    format!(
-        "{key}  {hint}  {}",
-        entry.shape.as_deref().unwrap_or("exact only")
-    )
+    format!("{key}  {hint}")
 }
 
 /// Merges `entries` into the config text, keeping every other field. A value

@@ -63,7 +63,7 @@ Homebrew, Cargo and pre-built binaries for Linux, macOS and Windows are in the [
 ## `redacted init`
 
 - Learns the secrets in your `.env` files, so the hook catches them even when no vendor pattern knows their format.
-- Stores a SHA-256 hash, the length and an optional shape for each value. Never the value.
+- Stores a SHA-256 hash and the length of each value. Never the value. Catching rotated keys by prefix is opt-in, and shows the prefix it would store first.
 - You pick the values to learn and confirm the config before anything is written.
 - Registers the hook in your Claude Code settings. Safe to run again.
 
@@ -74,7 +74,7 @@ Full walkthrough and flags: [Setup: `redacted init`](docs/REFERENCE.md#setup-red
 | Tier | What it catches | Default |
 | --- | --- | --- |
 | Vendor signatures | Keys with a known format: 46 built-in patterns covering AWS, GitHub, Stripe, OpenAI, Anthropic, database URLs, private keys and more. | on |
-| Learned secrets | The values `redacted init` learned from your `.env`, matched by hash, plus rotated keys with the same prefix. | on once `init` writes entries |
+| Learned secrets | The values `redacted init` learned from your `.env`, matched by hash, plus rotated keys with the same prefix where you opt in. | on once `init` writes entries |
 | Entropy heuristic | Random-looking values in `KEY=value` lines that no other tier knows. | off |
 
 Personal data can be scrubbed too: email addresses, phone numbers, payment cards, IBANs, US Social Security numbers, passport numbers, and Indonesian NIK and NPWP numbers. Each is off until you turn it on in the config.
@@ -91,7 +91,7 @@ Other assistants, and whether their hooks can replace tool output, are listed un
 ## Known limitations
 
 - Learned secrets match as whole tokens. One embedded mid-token, such as in a URL path, passes unless a vendor pattern catches it.
-- A learned shape also matches a non-secret with the same prefix and similar length. Check the shape `init` shows before confirming.
+- A learned shape also matches a non-secret with the same prefix and similar length. Tick a rotated key in `init` only when the prefix it shows is not itself secret.
 - With the heuristic on, a high-entropy identifier that mixes case and digits (some tool or request ids) may be redacted. The 4-character hint makes these easy to spot.
 - Every pattern scans the full output in turn, after a substring prefilter. Multi-megabyte output adds noticeable latency per call.
 - Commands typed at the Claude Code prompt with `!` are not tool calls. Their output reaches the model unscrubbed.

@@ -333,6 +333,7 @@ fn check_learned(cwd: Option<&Path>, config: &Config) -> Vec<Check> {
             config::VENDOR_ONLY_NOTICE,
         ));
     }
+    out.extend(check_learned_shapes(config));
     let project_learned = cwd.map_or(0, config::project_learned_count);
     if project_learned > 0 {
         let entries = if project_learned == 1 {
@@ -345,6 +346,27 @@ fn check_learned(cwd: Option<&Path>, config: &Config) -> Vec<Check> {
         )));
     }
     out
+}
+
+/// Older inits stored a shape for every prefixed value; it is kept, only flagged.
+fn check_learned_shapes(config: &Config) -> Option<Check> {
+    let shaped: Vec<&str> = config
+        .learned
+        .iter()
+        .filter(|learned| learned.shape.is_some())
+        .map(|learned| learned.name.as_str())
+        .collect();
+    if shaped.is_empty() {
+        return None;
+    }
+    Some(Check::new(
+        "learned shapes",
+        CheckStatus::Warn,
+        format!(
+            "shape keeps the start of the value in plain text ({}); to keep only the hash, delete their shape: lines in ~/.config/redacted/config.yaml",
+            shaped.join(", ")
+        ),
+    ))
 }
 
 fn check_test_scrub() -> Check {
