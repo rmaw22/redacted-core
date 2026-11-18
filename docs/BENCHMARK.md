@@ -129,7 +129,7 @@ REDACTED_BENCHMARK_SEED=1794499212209080001 REDACTED_BENCHMARK_REPORT=docs/BENCH
 
 ## What this does not show
 
-- Learned secrets are excluded. They match values from your own environment, which a fixed benchmark cannot hold.
+- Learned secrets are excluded. They match values from your own environment, which a fixed benchmark cannot hold. Their scrub time with up to 1000 entries is in [BENCHMARK-LEARNED.md](BENCHMARK-LEARNED.md).
 - The hook envelope path (JSON in, JSON out) is tested in `tests/cli.rs` and `tests/golden.rs`, not here.
 - No competitor numbers. Other tools were not run.
 - The placements were chosen by the author. Real output can hold shapes not listed here.
