@@ -137,3 +137,33 @@ fn bad_learned_shape_is_an_error() {
     };
     assert!(Scrubber::new(&cfg, &EngineConfig::default()).is_err());
 }
+
+#[test]
+fn learn_keeps_no_piece_of_a_prefixed_value_in_any_form() {
+    // A password with a separated prefix used to store `Kopi\-Susu\-` in its shape.
+    let value = "Kopi-Susu-2026-x9";
+    let entry = learn("DB_PASS", value).unwrap();
+    assert_eq!(entry.shape, None);
+    let stored = serde_yaml::to_string(&entry).unwrap();
+    let chars: Vec<char> = value.chars().collect();
+    for window in chars.windows(4) {
+        let piece: String = window.iter().collect();
+        for form in [piece.clone(), regex::escape(&piece)] {
+            assert!(!stored.contains(&form), "{form:?} stored in:\n{stored}");
+        }
+    }
+}
+
+#[test]
+fn shape_prefix_is_the_literal_start_derive_shape_stores() {
+    for value in ["Kopi-Susu-2026-x9", "sk_live_Ab1Ab1Ab1Ab1Ab1Ab1"] {
+        let prefix = shape_prefix(value).unwrap();
+        let shape = derive_shape(value).unwrap();
+        assert!(
+            shape.starts_with(&format!(r"\b{}[", regex::escape(prefix))),
+            "{shape}"
+        );
+    }
+    assert_eq!(shape_prefix("Pw9xQz7kLm"), None);
+    assert_eq!(derive_shape("Pw9xQz7kLm"), None);
+}

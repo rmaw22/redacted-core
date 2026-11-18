@@ -660,13 +660,17 @@ fn every_builtin_secret_planted_in_the_corpus_is_redacted() {
 }
 
 /// Learned entries derived the way `init` derives them, from synthetic values:
-/// one exact-only, one custom-prefix shape (all three classes, so the band is stable).
+/// one exact-only, one custom-prefix shape the user opted into (all three
+/// classes, so the band is stable).
 fn learned_corpus_scrubber() -> (Scrubber, String, String) {
     let exact = fake_secrets::alnum(24);
     let shaped = format!("acme_{}aZ9", fake_secrets::alnum(27));
     let entries = vec![
         crate::scrub::learn("DB_PASS", &exact).unwrap(),
-        crate::scrub::learn("ACME_KEY", &shaped).unwrap(),
+        crate::config::LearnedSecret {
+            shape: crate::scrub::derive_shape(&shaped),
+            ..crate::scrub::learn("ACME_KEY", &shaped).unwrap()
+        },
         crate::scrub::learn("STRIPE_KEY", &fake_secrets::stripe_key("sk_live_")).unwrap(),
         crate::scrub::learn("GH_TOKEN", &fake_secrets::github_token("ghp_")).unwrap(),
         crate::scrub::learn("SLACK_TOKEN", &fake_secrets::slack_token("xoxb")).unwrap(),

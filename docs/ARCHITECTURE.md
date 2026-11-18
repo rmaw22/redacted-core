@@ -35,7 +35,7 @@ stdin -> cli::run_scrub -> looks_like_hook_payload?
 | `src/cli.rs` | clap commands, `scrub` (mode choice, stats, pre-v2 notice), `show_stats`, the one place an `Err` becomes exit 1. |
 | `src/config.rs` | `Config`, `LearnedSecret`, `HeuristicConfig`, `EngineConfig`; global and project loading and merging; `is_vendor_only`. |
 | `src/settings.rs` | Claude Code `settings.json`: read, `install_hook`, `remove_hook`, find our entry. |
-| `src/init.rs` | `redacted init` (env file pick, `parse_dotenv`, `with_url_passwords`, `learn`, `derive_shape`, `merge_learned_into_config`, hook install) and `uninstall`. |
+| `src/init.rs` | `redacted init` (env file pick, `parse_dotenv`, `with_url_passwords`, the secrets picker, the rotated-keys opt-in, `merge_learned_into_config`, hook install) and `uninstall`. |
 | `src/verify.rs` | `redacted verify`: one `Check` per line, exit 1 on any FAIL. |
 | `src/scrub.rs` | `Scrubber`: builds every tier, runs vendor patterns and the heuristic, writes markers. |
 | `src/scrub/learned.rs` | Learned tier: shape and exact-hash matching, `sha256_hex`, `learned_value_hint`. |
@@ -116,11 +116,11 @@ Before the picker, `init::with_url_passwords` expands the parsed pairs:
 - `url_password` reads the password from the userinfo, up to the last `@` before the first `/`, `?` or `#`.
 - The password is percent-decoded with `scrub::percent_decode`. Invalid UTF-8 keeps it as written.
 
-`init::learn` turns a picked `.env` value into `LearnedSecret {name, sha256, byte_len, shape}`:
+`scrub::learn` turns a picked `.env` value into `LearnedSecret {name, sha256, byte_len, shape}` with `shape: None`; `init` sets the shape only for rows the user ticks under `Also catch rotated keys for:`, since it keeps the value's prefix in plain text:
 
 - `name` is the key lowercased, `byte_len` (YAML key `len`) is the byte length. The value is never written.
 - Values under 8 characters or with whitespace are refused.
-- `derive_shape` returns a shape only when the value has a literal prefix of 3+ characters ending in the last `_` or `-` of its first 12 characters, and the rest holds only `[A-Za-z0-9_-]`.
+- `derive_shape` (and `shape_prefix`, the prefix it would store) returns a shape only when the value has a literal prefix of 3+ characters ending in the last `_` or `-` of its first 12 characters, and the rest holds only `[A-Za-z0-9_-]`.
 - The shape is `\b<prefix>[<charset of the rest>]{n-4,n+4}\b`, lower bound at least 1.
 
 `Scrubber::scrub_learned` then:

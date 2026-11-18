@@ -64,15 +64,16 @@ What `init` does, in order:
    - One file is used directly. Several open a picker.
    - None found: it installs the hook only.
 3. Reads `KEY=value` lines. Handles `export` and quotes. Commented-out assignments are offered too, since they leak like live ones; prose comments are skipped. Skips empty values.
-4. Shows a multi-select, `Secrets to learn:`. Each row shows the key, the last 4 characters (values of 12+ characters only) and the shape, or `exact only`. Never the value.
+4. Shows a multi-select, `Secrets to learn:`. Each row shows the key and the last 4 characters (values of 12+ characters only). Never the value.
    - Pre-ticked: values with at least 2 of {lowercase, uppercase, digit, other}. So `development` and `3000` start unticked.
    - On a re-run, rows already in the global config start ticked: `learned` (same key and value), `learned as <name>` (same value under another key) or `new value, kept as <name>_2` (same key, new value). Unticking one never removes the stored entry.
    - Not learnable, shown with the reason: under 8 characters (`too short`) or containing whitespace (`cannot match (contains spaces)`).
-5. Prints the merged `~/.config/redacted/config.yaml` and asks `Write it?` (default No).
+5. When a ticked value has a literal prefix, shows a second multi-select, `Also catch rotated keys for:`. Each row shows the key and the prefix a shape would store in plain text, for example `DB_PASS  stores "Kopi-Susu-" in plain text`. Nothing is ticked by default; a row left unticked is learned by hash only. Values already in the config are not offered.
+6. Prints the merged `~/.config/redacted/config.yaml` and asks `Write it?` (default No).
    - No: exits 1 with `init: nothing written`. The hook is not installed.
    - Yes: writes the file with mode 0600, sets `version: 2`, merges `learned` entries by name and keeps every other key.
-6. Registers `<absolute path of this binary> scrub` as a PostToolUse hook and as a PreToolUse hook with matcher `Monitor` ([Background commands](#background-commands-monitor)). An existing `redacted scrub` entry is replaced. Other hooks and settings are kept.
-7. Prints a notice when only vendor signatures are active (no learned entries, heuristic off).
+7. Registers `<absolute path of this binary> scrub` as a PostToolUse hook and as a PreToolUse hook with matcher `Monitor` ([Background commands](#background-commands-monitor)). An existing `redacted scrub` entry is replaced. Other hooks and settings are kept.
+8. Prints a notice when only vendor signatures are active (no learned entries, heuristic off).
 
 Safe to run again.
 
@@ -147,10 +148,10 @@ Built-in `allow_values` leave these alone: Anthropic transcript ids (`toolu_`, `
 
 ### Learned secrets
 
-- `init` stores, per value: `name` (the env key, lowercased), `sha256` of the value, `len` in bytes and an optional `shape`. Never the value.
+- `init` stores, per value: `name` (the env key, lowercased), `sha256` of the value, `len` in bytes and, only for rows ticked under `Also catch rotated keys for:`, a `shape`. Never the value.
 - A URL value with a password, such as `DATABASE_URL=postgres://admin:pw@host/db`, adds a second row, `database_url_password`. It holds the password alone, percent-decoded, so a log that prints only the password is caught too.
 - Two values under one name are both kept. The newcomer gets the first free numeric suffix (`db_password_2`, `db_password_3`), and the redaction label shows which one matched. A value already learned is never added twice, whatever its key. `init` never removes an entry.
-- A `shape` is derived when the value has a literal prefix of 3+ characters ending in `_` or `-` within its first 12 characters, and the rest holds only letters, digits, `_` and `-`.
+- A `shape` keeps the value's prefix in plain text, so it is opt-in. It is offered when the value has a literal prefix of 3+ characters ending in `_` or `-` within its first 12 characters, and the rest holds only letters, digits, `_` and `-`.
 - The shape is the prefix, the rest's character set and a length band of plus or minus 4, for example `\bsk_live_[a-zA-Z0-9]{20,28}\b`. It also catches a rotated key with the same prefix.
 - Matching runs shapes first, then exact hashes.
 - Exact candidates: whole tokens, the part after each `=` or `:`, with trailing punctuation and one pair of quotes removed. A candidate is hashed only when its byte length equals some learned `len`.
@@ -297,6 +298,7 @@ Prints one line per check and exits 1 when any check fails.
 | `test scrub` | FAIL when the built-in patterns miss a sample database URL. |
 | `learned secrets` | Config version, number of learned entries, heuristic on or off. |
 | `protection` | WARN when only vendor signatures are active. |
+| `learned shapes` | WARN, naming the entries, when learned entries hold a `shape`, which keeps the start of the value in plain text. Configs from earlier versions stored one for every prefixed value. Delete the `shape:` line to keep only the hash; `verify` never removes it. |
 | `project learned` | WARN when `.redacted.yaml` holds `learned` entries, which are ignored. |
 
 ## Stats
@@ -420,7 +422,7 @@ The command is passed to `bash -c` as one quoted word, so nothing in it can clos
 ## Known limitations
 
 - Learned secrets match as whole tokens. One embedded mid-token, such as in a URL path, passes unless a vendor pattern catches it.
-- A learned shape also matches a non-secret with the same prefix and similar length. Check the shape `init` shows before confirming.
+- A learned shape also matches a non-secret with the same prefix and similar length. Tick a rotated key in `init` only when the prefix it shows is not itself secret.
 - With the heuristic on, a high-entropy identifier that mixes case and digits (some tool or request ids) may be redacted. The 4-character hint makes these easy to spot.
 - Every pattern scans the full output in turn, after a substring prefilter. Multi-megabyte output adds noticeable latency per call.
 - Commands typed at the Claude Code prompt with `!` are not tool calls. Their output reaches the model unscrubbed.

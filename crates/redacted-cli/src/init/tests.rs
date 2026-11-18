@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::config::LearnedSecret;
-use redacted_core::scrub::{derive_shape, learn};
+use redacted_core::scrub::{derive_shape, learn, shape_prefix};
 use std::fs;
 use std::path::PathBuf;
 
@@ -169,7 +169,7 @@ fn learn_hashes_the_value_and_lowercases_the_name() {
     assert_eq!(learned.name, "stripe_key");
     assert_eq!(learned.sha256, redacted_core::scrub::sha256_hex(&value));
     assert_eq!(learned.byte_len, value.len());
-    assert_eq!(learned.shape, derive_shape(&value));
+    assert_eq!(learned.shape, None, "a shape is opt-in, never from learn");
 }
 
 #[test]
@@ -262,29 +262,32 @@ fn a_changed_value_shows_the_suffixed_name_it_will_be_written_under() {
 fn without_a_config_rows_and_ticks_are_as_before() {
     let entry = learn("DB_PASSWORD", WEAK_VALUE).unwrap();
     let row = picker_row("DB_PASSWORD", WEAK_VALUE, &Ok(entry.clone()), &[]);
-    assert!(
-        !row.contains("learned") && row.contains("exact only"),
-        "{row}"
-    );
+    assert!(!row.contains("learned"), "{row}");
     assert!(!should_preselect(&entry, WEAK_VALUE, &[]));
 }
 
 #[test]
-fn picker_row_shows_key_hint_and_shape_never_the_value() {
-    let value = format!("sk_live_{}", "Ab1".repeat(8));
-    let row = picker_row("STRIPE_KEY", &value, &learn("STRIPE_KEY", &value), &[]);
-    assert!(
-        row.contains("STRIPE_KEY") && row.contains("...",) && row.contains("Ab1"),
-        "{row}"
-    );
-    assert!(
-        row.contains(r"\bsk_live_") && !row.contains(&value),
-        "{row}"
-    );
+fn picker_row_shows_key_and_hint_never_the_prefix_or_value() {
+    let value = "Kopi-Susu-2026-x9";
+    let row = picker_row("DB_PASS", value, &learn("DB_PASS", value), &[]);
+    assert_eq!(row, "DB_PASS  ...6-x9");
     let short = picker_row("PIN", "Pw9xQz7k", &learn("PIN", "Pw9xQz7k"), &[]);
+    assert_eq!(short, "PIN  (short)");
+}
+
+#[test]
+fn rotated_key_row_shows_the_exact_prefix_a_shape_would_store() {
+    let value = "Kopi-Susu-2026-x9";
+    assert_eq!(
+        rotated_key_row("DB_PASS", value),
+        r#"DB_PASS  stores "Kopi-Susu-" in plain text"#
+    );
+    // What the row shows is what the shape keeps.
+    let shape = derive_shape(value).unwrap();
+    let prefix = shape_prefix(value).unwrap();
     assert!(
-        short.contains("exact only") && !short.contains("Qz7k"),
-        "{short}"
+        shape.starts_with(&format!(r"\b{}", regex::escape(prefix))),
+        "{shape}"
     );
 }
 
