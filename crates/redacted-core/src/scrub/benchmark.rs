@@ -382,7 +382,7 @@ fn footer(seed: u64) -> String {
         "## How to reproduce\n\n\
          ```bash\nREDACTED_BENCHMARK_SEED={seed} REDACTED_BENCHMARK_REPORT=docs/BENCHMARK.md cargo test detection_benchmark\n```\n\n\
          ## What this does not show\n\n\
-         - Learned secrets are excluded. They match values from your own environment, which a fixed benchmark cannot hold.\n\
+         - Learned secrets are excluded. They match values from your own environment, which a fixed benchmark cannot hold. Their scrub time with up to 1000 entries is in [BENCHMARK-LEARNED.md](BENCHMARK-LEARNED.md).\n\
          - The hook envelope path (JSON in, JSON out) is tested in `tests/cli.rs` and `tests/golden.rs`, not here.\n\
          - No competitor numbers. Other tools were not run.\n\
          - The placements were chosen by the author. Real output can hold shapes not listed here.\n\

@@ -48,6 +48,7 @@ Built-in patterns live in `src/engine.yml`, not in Rust.
    - There is no script to regenerate them.
    - A change that alters existing golden output breaks 0.7 parity on purpose or by mistake. Say which in the PR, and edit the golden by hand.
 7. Regenerate the benchmark page: `REDACTED_BENCHMARK_REPORT=docs/BENCHMARK.md cargo test detection_benchmark`.
+   A change to the learned tier also regenerates the timing page: `REDACTED_LEARNED_BENCHMARK_REPORT=$PWD/docs/BENCHMARK-LEARNED.md cargo test --release -p redacted-core learned_scale_benchmark -- --ignored`.
 
 ## Pull requests
 

@@ -9,6 +9,8 @@ mod findings;
 mod go_regex;
 mod guards;
 mod learned;
+#[cfg(test)]
+mod learned_benchmark;
 mod pii;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
