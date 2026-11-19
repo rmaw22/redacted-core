@@ -1,0 +1,18 @@
+Halo tim,
+
+Rekap penjualan minggu ini sudah saya unggah. Total omzet Rp 1.250.000.000, naik 12,5% dibanding minggu lalu. Pesanan terbanyak datang dari Jakarta, Surabaya, dan Medan.
+
+Beberapa catatan:
+1. Invoice INV/20261119/MPL/4567890123 sudah lunas, tinggal menunggu faktur pajak.
+2. Paket dengan resi JNE 012345678901234 dan SiCepat 004512349876 masih dalam perjalanan, estimasi tiba Senin 23 November 2026.
+3. Nomor PO 4500012345 dari gudang Cikarang perlu direvisi karena jumlahnya 1.200 unit, bukan 12.000.
+4. Stok SKU ABC-12345-XL tinggal 37 pcs, kode barcode 8992761136017.
+5. Rapat evaluasi pindah ke Rabu pukul 14.30 di ruang Merapi lantai 12, dial-in ext. 2045.
+6. Versi aplikasi kasir sudah 3.14.2 (build 20261118093000), server staging di 10.20.30.40.
+7. Tiket bantuan #48213 ditutup; ID transaksi contohnya 7f3c2a10-5b6d-4e8f-9a1b-2c3d4e5f6a7b.
+
+Soal kantor baru: Jalan Sudirman macet parah tiap sore, jadi dari stasiun lebih cepat Jalan Kaki 15 menit. Lewat Jalan Tol 12 km saja sudah 1 jam. Kalau mau lapor ke Pak RT atau Bu Lurah, kantornya dekat Ibu Kota kecamatan. Bapak Ibu sekalian boleh ajak keluarga.
+
+Rekening koran bulan Oktober sudah dikirim bagian keuangan, dan layanan BCA 24 jam bisa dipakai kalau ada kendala. Program BPJS Kesehatan 2026 wajib untuk semua karyawan, kartu keluarga cukup difotokopi. Nama produk: Kopi Susu Aren. Paspor wajib berlaku minimal 6 bulan sebelum berangkat.
+
+Target bulan depan 2,5 miliar. Semangat!

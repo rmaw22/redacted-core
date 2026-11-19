@@ -1,5 +1,6 @@
 //! Validators for the PII rows whose regex only matches a shape: a run of digits
-//! is a card, an IBAN or a NIK only when its check digits and fields add up.
+//! is a card, an IBAN or a NIK only when its check digits and fields add up, and
+//! capitalised words after `Pak` are a name only when they are not a title.
 
 /// Card numbers the payment networks publish for testing: no account behind them.
 const TEST_CARDS: [&str; 15] = [
@@ -98,6 +99,96 @@ const IBAN_LENGTHS: [(&str, usize); 70] = [
 const NIK_PROVINCES: [u32; 38] = [
     11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 31, 32, 33, 34, 35, 36, 51, 52, 53, 61, 62, 63, 64, 65,
     71, 72, 73, 74, 75, 76, 81, 82, 91, 92, 93, 94, 95, 96,
+];
+
+/// What follows Pak, Bu, Bapak or Ibu when no person is named: a title, a role,
+/// or the second half of a set phrase (`Ibu Kota`, `Bapak Ibu sekalian`).
+const TITLE_WORDS: [&str; 44] = [
+    "angkat",
+    "bapak",
+    "bendahara",
+    "bos",
+    "boss",
+    "bu",
+    "bupati",
+    "camat",
+    "dekan",
+    "direktur",
+    "dirut",
+    "dokter",
+    "dosen",
+    "gubernur",
+    "guru",
+    "haji",
+    "hajjah",
+    "hakim",
+    "ibu",
+    "jari",
+    "kades",
+    "kandung",
+    "kepala",
+    "ketua",
+    "kos",
+    "kota",
+    "lurah",
+    "manager",
+    "manajer",
+    "menteri",
+    "mertua",
+    "negara",
+    "pak",
+    "pertiwi",
+    "polisi",
+    "presiden",
+    "rektor",
+    "rt",
+    "rumah",
+    "rw",
+    "satpam",
+    "sekretaris",
+    "tiri",
+    "wali",
+];
+
+/// Capitalised words that follow a name without being part of it: weekdays,
+/// months, and the words that open a company or team name.
+const AFTER_NAME_WORDS: [&str; 30] = [
+    "senin",
+    "selasa",
+    "rabu",
+    "kamis",
+    "jumat",
+    "jum'at",
+    "sabtu",
+    "minggu",
+    "ahad",
+    "januari",
+    "februari",
+    "maret",
+    "april",
+    "mei",
+    "juni",
+    "juli",
+    "agustus",
+    "september",
+    "oktober",
+    "november",
+    "desember",
+    "pt",
+    "cv",
+    "ud",
+    "bank",
+    "tim",
+    "divisi",
+    "hr",
+    "hrd",
+    "it",
+];
+
+/// Words that count a thing after a number, so `Jalan Kaki 30 menit` is no address.
+const UNIT_WORDS: [&str; 14] = [
+    "km", "m", "meter", "jam", "menit", "detik", "hari", "minggu", "bulan", "tahun", "kali",
+    "orang", "unit", "persen",
 ];
 
 fn digits_of(text: &str) -> Vec<u32> {
@@ -224,6 +315,63 @@ pub(super) fn is_nik(matched: &str) -> bool {
         && (1..=31).contains(&day)
         && (1..=12).contains(&field(8))
         && leading_number(&digits[12..], 4) != 0
+}
+
+/// An Indonesian bank account number has 10 to 16 digits, whatever the grouping.
+pub(super) fn is_bank_account(matched: &str) -> bool {
+    (10..=16).contains(&digits_of(matched).len())
+}
+
+/// An all-digit passport number counts only right after the label: `passport
+/// expires 20301231` holds a date. A number with letters may sit a few words on.
+pub(super) fn is_passport_out_of_reach(matched: &str) -> bool {
+    let mut words = matched
+        .split(|c: char| " \t:#=-".contains(c))
+        .filter(|word| !word.is_empty());
+    let is_bare_number = words
+        .next_back()
+        .is_some_and(|value| value.bytes().all(|byte| byte.is_ascii_digit()));
+    let has_other_words = words.skip(1).any(|word| {
+        let word = word.trim_end_matches('.').to_ascii_lowercase();
+        !matches!(word.as_str(), "no" | "number" | "nomor")
+    });
+    is_bare_number && has_other_words
+}
+
+/// A street is an address once a house number, RT or RW pins it down.
+pub(super) fn is_address(matched: &str) -> bool {
+    matched.bytes().any(|byte| byte.is_ascii_digit())
+}
+
+/// Whether the text opens with a unit word: the number before it is a count.
+pub(super) fn starts_with_unit(rest: &str) -> bool {
+    let word: String = rest
+        .trim_start_matches([' ', '\t'])
+        .chars()
+        .take_while(char::is_ascii_alphabetic)
+        .collect();
+    UNIT_WORDS.contains(&word.to_ascii_lowercase().as_str())
+}
+
+/// How many bytes of the words after a name label are the name: all of them up
+/// to a weekday, month or company word, and none when they open with a title.
+pub(super) fn name_len(words: &str) -> usize {
+    let (mut len, mut offset) = (0, 0);
+    for piece in words.split_inclusive([' ', '\t']) {
+        let word = piece.trim_end_matches([' ', '\t']);
+        let lower = word.to_ascii_lowercase();
+        if len == 0 && TITLE_WORDS.contains(&lower.as_str()) {
+            return 0;
+        }
+        if AFTER_NAME_WORDS.contains(&lower.as_str()) {
+            break;
+        }
+        if !word.is_empty() {
+            len = offset + word.len();
+        }
+        offset += piece.len();
+    }
+    len
 }
 
 #[cfg(test)]

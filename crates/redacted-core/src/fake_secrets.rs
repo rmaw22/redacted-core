@@ -259,6 +259,38 @@ pub fn passport() -> String {
     )
 }
 
+/// An Indonesian BPJS Kesehatan number: 13 digits, zero-led like most in use.
+pub fn bpjs() -> String {
+    format!("000{}", digits(10))
+}
+
+/// An Indonesian bank account number: 10 digits, never opening like a mobile number.
+pub fn bank_account() -> String {
+    format!("{}{}", random_from_charset("123456789", 1), digits(9))
+}
+
+/// An Indonesian street address with a house number.
+pub fn address() -> String {
+    format!("Jl. {} No. {}", capitalised_word(6), digits(2))
+}
+
+/// Two capitalised words, the shape of a name. Opens with X so no word is a title.
+pub fn person_name() -> String {
+    format!("X{} {}", lowercase(5), capitalised_word(8))
+}
+
+fn capitalised_word(len: usize) -> String {
+    format!(
+        "{}{}",
+        random_from_charset("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 1),
+        lowercase(len - 1)
+    )
+}
+
+fn lowercase(len: usize) -> String {
+    random_from_charset("abcdefghijklmnopqrstuvwxyz", len)
+}
+
 pub fn npm_token() -> String {
     format!("npm_{}", alnum(36))
 }

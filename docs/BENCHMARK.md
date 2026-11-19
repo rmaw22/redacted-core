@@ -12,7 +12,7 @@ The tool reduces exposure to secrets in tool output. It never prevents it.
 - Each built-in pattern gets one fake value per placement, generated at run time by `src/fake_secrets.rs`. Keyed patterns are planted with their key, since the key is part of the match.
 - Each value is planted mid-file in a `corpus/clean/*.txt` file. Files rotate across rows.
 - Caught means at least one new redaction and no 8-character run of the value left outside a redaction marker.
-- Seed 1794499212209080001. Replay with `REDACTED_BENCHMARK_SEED=1794499212209080001`.
+- Seed 1795077216968437001. Replay with `REDACTED_BENCHMARK_SEED=1795077216968437001`.
 
 ## Misses
 
@@ -20,7 +20,7 @@ The tool reduces exposure to secrets in tool output. It never prevents it.
 | --- | --- | --- | --- | --- |
 | JSON nested as escaped string | `private_key_truncated`, `gcp_sa_key_id`, `gcp_sa_private_key` | 3 | 3 | 0 |
 | URL path segment | `email` (PII on) | 0 | 0 | 1 |
-| mid-token | `twilio_api_key`, `twilio_account_sid`, `credentialed_url`, `openai_classic_key`, `auth_header`, `credit_card` (PII on), `iban` (PII on), `us_ssn` (PII on), `nik` (PII on), `npwp` (PII on), `passport` (PII on) | 5 | 5 | 6 |
+| mid-token | `twilio_api_key`, `twilio_account_sid`, `credentialed_url`, `openai_classic_key`, `auth_header`, `credit_card` (PII on), `iban` (PII on), `us_ssn` (PII on), `nik` (PII on), `npwp` (PII on), `address` (PII on), `passport` (PII on), `kk` (PII on), `bpjs` (PII on), `bank_account` (PII on), `person_name` (PII on) | 5 | 5 | 11 |
 
 Expected-miss placements (base64, line-wrapped) appear in the recall table only.
 
@@ -44,33 +44,33 @@ Expected-miss placements (base64, line-wrapped) appear in the recall table only.
 | trailing period | harder | 46/46 (100.0%) | 46/46 (100.0%) |
 | trailing comma | harder | 46/46 (100.0%) | 46/46 (100.0%) |
 | base64 of the line | expected miss | 0/46 (0.0%) | 0/46 (0.0%) |
-| line-wrapped at 40 | expected miss | 5/46 (10.9%) | 9/46 (19.6%) |
+| line-wrapped at 40 | expected miss | 5/46 (10.9%) | 8/46 (17.4%) |
 | all plain placements | plain | 460/460 (100.0%) | 460/460 (100.0%) |
-| all placements | all | 687/782 (87.9%) | 691/782 (88.4%) |
+| all placements | all | 687/782 (87.9%) | 690/782 (88.2%) |
 
 ## Opt-in PII rows (every toggle on)
 
 | Placement | Group | PII on |
 | --- | --- | --- |
-| env line | plain | 8/8 (100.0%) |
-| shell export | plain | 8/8 (100.0%) |
-| JSON value | plain | 8/8 (100.0%) |
-| JSON nested as escaped string | harder | 8/8 (100.0%) |
-| URL query parameter | plain | 8/8 (100.0%) |
-| URL path segment | harder | 7/8 (87.5%) |
-| git diff added line | plain | 8/8 (100.0%) |
-| log line | plain | 8/8 (100.0%) |
-| YAML value | plain | 8/8 (100.0%) |
-| markdown inline code | plain | 8/8 (100.0%) |
-| quoted in error message | plain | 8/8 (100.0%) |
-| CSV field | plain | 8/8 (100.0%) |
-| mid-token | harder | 2/8 (25.0%) |
-| trailing period | harder | 8/8 (100.0%) |
-| trailing comma | harder | 8/8 (100.0%) |
-| base64 of the line | expected miss | 0/8 (0.0%) |
-| line-wrapped at 40 | expected miss | 8/8 (100.0%) |
-| all plain placements | plain | 80/80 (100.0%) |
-| all placements | all | 121/136 (89.0%) |
+| env line | plain | 13/13 (100.0%) |
+| shell export | plain | 13/13 (100.0%) |
+| JSON value | plain | 13/13 (100.0%) |
+| JSON nested as escaped string | harder | 13/13 (100.0%) |
+| URL query parameter | plain | 13/13 (100.0%) |
+| URL path segment | harder | 12/13 (92.3%) |
+| git diff added line | plain | 13/13 (100.0%) |
+| log line | plain | 13/13 (100.0%) |
+| YAML value | plain | 13/13 (100.0%) |
+| markdown inline code | plain | 13/13 (100.0%) |
+| quoted in error message | plain | 13/13 (100.0%) |
+| CSV field | plain | 13/13 (100.0%) |
+| mid-token | harder | 2/13 (15.4%) |
+| trailing period | harder | 13/13 (100.0%) |
+| trailing comma | harder | 13/13 (100.0%) |
+| base64 of the line | expected miss | 0/13 (0.0%) |
+| line-wrapped at 40 | expected miss | 13/13 (100.0%) |
+| all plain placements | plain | 130/130 (100.0%) |
+| all placements | all | 196/221 (88.7%) |
 
 Excludes the expected-miss placements (base64, line-wrapped).
 
@@ -83,7 +83,12 @@ Excludes the expected-miss placements (base64, line-wrapped).
 | `us_ssn` | 14/15 (93.3%) |
 | `nik` | 14/15 (93.3%) |
 | `npwp` | 14/15 (93.3%) |
+| `address` | 14/15 (93.3%) |
 | `passport` | 14/15 (93.3%) |
+| `kk` | 14/15 (93.3%) |
+| `bpjs` | 14/15 (93.3%) |
+| `bank_account` | 14/15 (93.3%) |
+| `person_name` | 14/15 (93.3%) |
 
 ## Recall by pattern
 
@@ -113,6 +118,7 @@ Redactions in files that hold no secret. Zero is correct.
 | `docs_readme.txt` | 0 | 0 |
 | `env_example.txt` | 0 | 0 |
 | `gh_output.txt` | 0 | 0 |
+| `id_office.txt` | 0 | 0 |
 | `ids_and_hashes.txt` | 0 | 0 |
 | `numbers_and_contacts.txt` | 0 | 0 |
 | `prose.txt` | 0 | 0 |
@@ -124,7 +130,7 @@ Redactions in files that hold no secret. Zero is correct.
 ## How to reproduce
 
 ```bash
-REDACTED_BENCHMARK_SEED=1794499212209080001 REDACTED_BENCHMARK_REPORT=docs/BENCHMARK.md cargo test detection_benchmark
+REDACTED_BENCHMARK_SEED=1795077216968437001 REDACTED_BENCHMARK_REPORT=docs/BENCHMARK.md cargo test detection_benchmark
 ```
 
 ## What this does not show

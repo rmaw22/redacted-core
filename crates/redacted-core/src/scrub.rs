@@ -260,16 +260,24 @@ impl Scrubber {
             if self.should_skip_match(pattern, found.as_str(), text, found.end()) {
                 continue;
             }
-            let (kept, marker) = marker_for(pattern, &text[value_start..found.end()]);
+            let end = match pattern.name.as_str() {
+                // The row takes every capitalised word; the name may end sooner.
+                "person_name" => value_start + pii::name_len(&text[value_start..found.end()]),
+                _ => found.end(),
+            };
+            if end == value_start {
+                continue;
+            }
+            let (kept, marker) = marker_for(pattern, &text[value_start..end]);
             let start = value_start + kept;
             out.push_str(&text[copied_until..start]);
             out.push_str(&marker);
-            copied_until = found.end();
-            let replaced = &text[start..found.end()];
+            copied_until = end;
+            let replaced = &text[start..end];
             replacements.push(Replacement {
                 name: &pattern.name,
                 start,
-                end: found.end(),
+                end,
                 written: marker.len(),
                 lead: replaced.len() - replaced.trim_start_matches([' ', '\t']).len(),
             });

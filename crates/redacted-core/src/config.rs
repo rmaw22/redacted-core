@@ -89,7 +89,8 @@ fn default_min_entropy() -> f64 {
     DEFAULT_MIN_ENTROPY
 }
 
-/// Opt-in PII tier: each toggle turns on the engine.yml row of the same name.
+/// Opt-in PII tier: each toggle turns on the engine.yml row of the same name
+/// (`nik` also turns on the labeled `kk` row).
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(default)]
 pub struct PiiConfig {
@@ -98,12 +99,20 @@ pub struct PiiConfig {
     pub credit_card: bool,
     pub iban: bool,
     pub us_ssn: bool,
-    /// Indonesian national identity number (also matches a family card number).
+    /// Indonesian national identity number and family card number (KK).
     pub nik: bool,
     /// Indonesian taxpayer number, dotted or after the word NPWP.
     pub npwp: bool,
     /// A passport number right after the word passport or paspor.
     pub passport: bool,
+    /// Indonesian BPJS Kesehatan or Ketenagakerjaan number after its label.
+    pub bpjs: bool,
+    /// Indonesian bank account number after the word rekening or a bank's name.
+    pub bank_account: bool,
+    /// Indonesian street address: Jl./Jalan with a number, RT/RW, Kelurahan, Kecamatan.
+    pub address: bool,
+    /// A person's name after a label such as `Nama:`, `a.n.`, Pak or Bu.
+    pub person_name: bool,
 }
 
 impl PiiConfig {
@@ -115,9 +124,13 @@ impl PiiConfig {
             "credit_card" => self.credit_card,
             "iban" => self.iban,
             "us_ssn" => self.us_ssn,
-            "nik" => self.nik,
+            "nik" | "kk" => self.nik,
             "npwp" => self.npwp,
             "passport" => self.passport,
+            "bpjs" => self.bpjs,
+            "bank_account" => self.bank_account,
+            "address" => self.address,
+            "person_name" => self.person_name,
             _ => false,
         }
     }
