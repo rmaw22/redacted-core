@@ -23,13 +23,17 @@ fn pii_config() -> Config {
             nik: true,
             npwp: true,
             passport: true,
+            bpjs: true,
+            bank_account: true,
+            address: true,
+            person_name: true,
         },
         ..Default::default()
     }
 }
 
 /// The PII rows, each compiled only when its `pii` toggle is on.
-const PII_ROWS: [&str; 8] = [
+const PII_ROWS: [&str; 13] = [
     "email",
     "phone",
     "credit_card",
@@ -38,6 +42,11 @@ const PII_ROWS: [&str; 8] = [
     "nik",
     "npwp",
     "passport",
+    "kk",
+    "bpjs",
+    "bank_account",
+    "address",
+    "person_name",
 ];
 
 pub(super) fn value_only_marker(name: &str, secret: &str) -> String {
@@ -67,22 +76,14 @@ pub(super) fn builtin_pattern_cases() -> Vec<PatternCase> {
             input: secret.clone(),
             expected: match name {
                 // `hint: false` in engine.yml.
-                "us_ssn" => "[REDACTED:us_ssn]".to_string(),
+                "us_ssn" | "address" => format!("[REDACTED:{name}]"),
                 _ => value_only_marker(name, &secret),
             },
             secret,
             opt_in: PII_ROWS.contains(&name),
         });
     }
-    // A row matched by the words before it keeps them and redacts the value.
-    let passport = fake_secrets::passport();
-    cases.push(PatternCase {
-        name: "passport",
-        input: format!("passport {passport}"),
-        expected: format!("passport {}", value_only_marker("passport", &passport)),
-        secret: passport,
-        opt_in: true,
-    });
+    cases.extend(labeled_cases());
     // includes_key patterns keep the key and separator and drop the label.
     for (name, key, sep, value) in keyed_secrets() {
         let expected = format!(
@@ -96,6 +97,26 @@ pub(super) fn builtin_pattern_cases() -> Vec<PatternCase> {
             expected,
             secret: value,
             opt_in: false,
+        });
+    }
+    cases
+}
+
+/// A row matched by the words before it keeps them and redacts the value.
+fn labeled_cases() -> Vec<PatternCase> {
+    let mut cases = Vec::new();
+    for (name, label, secret) in labeled_secrets() {
+        let marker = match name {
+            // `hint: false` in engine.yml.
+            "person_name" => "[REDACTED:person_name]".to_string(),
+            _ => value_only_marker(name, &secret),
+        };
+        cases.push(PatternCase {
+            name,
+            input: format!("{label} {secret}"),
+            expected: format!("{label} {marker}"),
+            secret,
+            opt_in: true,
         });
     }
     cases
@@ -141,6 +162,18 @@ fn generated_secrets() -> Vec<(&'static str, String)> {
         ("us_ssn", fake_secrets::us_ssn()),
         ("nik", fake_secrets::nik()),
         ("npwp", fake_secrets::npwp()),
+        ("address", fake_secrets::address()),
+    ]
+}
+
+/// PII rows that need the words before the value: name, label and value.
+fn labeled_secrets() -> Vec<(&'static str, &'static str, String)> {
+    vec![
+        ("passport", "passport", fake_secrets::passport()),
+        ("kk", "KK", fake_secrets::nik()),
+        ("bpjs", "BPJS Kesehatan", fake_secrets::bpjs()),
+        ("bank_account", "rekening", fake_secrets::bank_account()),
+        ("person_name", "Nama:", fake_secrets::person_name()),
     ]
 }
 

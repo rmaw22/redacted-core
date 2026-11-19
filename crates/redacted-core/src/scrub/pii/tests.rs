@@ -243,3 +243,172 @@ fn a_spaced_card_keeps_its_label_with_the_phone_row_on() {
     assert_eq!(result.counts_by_pattern.get("credit_card"), Some(&1));
     assert_eq!(result.count, 1);
 }
+
+#[test]
+fn indonesian_numbers_are_redacted_after_the_word_that_names_them() {
+    let scrubber = pii_scrubber();
+    for (input, expected) in [
+        ("No. KK: 3275011203120045", "No. KK: [REDACTED:kk ...0045]"),
+        (
+            "Kartu Keluarga nomor 3275011203120045",
+            "Kartu Keluarga nomor [REDACTED:kk ...0045]",
+        ),
+        // The 16-digit NPWP is the holder's NIK; the word before it picks the label.
+        ("NPWP: 3174052203800005", "NPWP: [REDACTED:npwp ...0005]"),
+        (
+            "BPJS Kesehatan: 0001234567891",
+            "BPJS Kesehatan: [REDACTED:bpjs ...7891]",
+        ),
+        (
+            "BPJS Ketenagakerjaan: 12345678901",
+            "BPJS Ketenagakerjaan: [REDACTED:bpjs ...8901]",
+        ),
+        ("no KPJ 12345678901.", "no KPJ [REDACTED:bpjs ...8901]."),
+        (
+            "Rekening gaji: BCA 5270381946 ya",
+            "Rekening gaji: BCA [REDACTED:bank_account ...1946] ya",
+        ),
+        (
+            "transfer ke rekening Mandiri 1420012345678.",
+            "transfer ke rekening Mandiri [REDACTED:bank_account ...5678].",
+        ),
+        (
+            "kirim ke BNI 0123456789",
+            "kirim ke BNI [REDACTED:bank_account ...6789]",
+        ),
+        (
+            "no rek: 527-038-1946",
+            "no rek: [REDACTED:bank_account ...1946]",
+        ),
+        (
+            "Paspor Bu Siti nomor C7654321, berlaku",
+            "Paspor Bu [REDACTED:person_name] nomor [REDACTED:passport ...4321], berlaku",
+        ),
+    ] {
+        assert_eq!(scrubber.scrub(input).text, expected, "{input}");
+    }
+}
+
+#[test]
+fn indonesian_numbers_without_their_word_are_left_alone() {
+    let scrubber = pii_scrubber();
+    for input in [
+        // 13, 11 and 10 digits mean nothing on their own.
+        "barcode 8992761136017",
+        "resi 12345678901",
+        "PO 4500012345",
+        // The word is there, the number is not an account or a member number.
+        "BCA 24 jam",
+        "rekening 123 456",
+        "BPJS Kesehatan 2026",
+        // Sixteen digits after KK that fail the region and date checks.
+        "KK 1791860933376006",
+    ] {
+        assert_eq!(scrubber.scrub(input).text, input, "{input}");
+    }
+}
+
+#[test]
+fn an_address_is_redacted_from_the_street_through_its_rt_rw_and_kelurahan() {
+    let scrubber = pii_scrubber();
+    for (input, expected) in [
+        (
+            "Alamat: Jl. Melati Raya No. 17, RT 004/RW 009, Kelurahan Jatiasih, Bekasi 17423",
+            "Alamat: [REDACTED:address], Bekasi 17423",
+        ),
+        (
+            "kirim ke Jalan HR Rasuna Said Kav. 5 lantai 3",
+            "kirim ke [REDACTED:address] lantai 3",
+        ),
+        ("jl. Kenanga 12A RT 02 RW 05.", "[REDACTED:address]."),
+        (
+            "domisili RT 003/007 Kel. Kebon Jeruk",
+            "domisili [REDACTED:address]",
+        ),
+    ] {
+        assert_eq!(scrubber.scrub(input).text, expected, "{input}");
+    }
+}
+
+#[test]
+fn a_street_named_in_passing_is_left_alone() {
+    let scrubber = pii_scrubber();
+    for input in [
+        "Jalan Sudirman macet parah",
+        "lewat Jl. Gatot Subroto, lalu belok",
+        "Jalan Kaki 15 menit dari stasiun",
+        "Jalan Tol 12 km lagi",
+        "jalan 3 langkah ke kiri",
+        "Kelurahan Jatiasih",
+    ] {
+        assert_eq!(scrubber.scrub(input).text, input, "{input}");
+    }
+}
+
+#[test]
+fn a_name_is_redacted_only_where_a_label_says_it_is_one() {
+    let scrubber = pii_scrubber();
+    for (input, expected) in [
+        (
+            "Nama lengkap: Siti Rahmawati\nNIK:",
+            "Nama lengkap: [REDACTED:person_name]\nNIK:",
+        ),
+        ("a.n. Bambang Hartono.", "a.n. [REDACTED:person_name]."),
+        (
+            "atas nama M. Rizky Pratama ya",
+            "atas nama [REDACTED:person_name] ya",
+        ),
+        (
+            "Atasannya Pak Bambang Hartono (HRD)",
+            "Atasannya Pak [REDACTED:person_name] (HRD)",
+        ),
+        // The name ends where a weekday, month or company word begins.
+        (
+            "hubungi bu Dewi Senin depan",
+            "hubungi bu [REDACTED:person_name] Senin depan",
+        ),
+        (
+            "Ibu Ratna PT Maju Jaya",
+            "Ibu [REDACTED:person_name] PT Maju Jaya",
+        ),
+    ] {
+        assert_eq!(scrubber.scrub(input).text, expected, "{input}");
+    }
+}
+
+#[test]
+fn a_title_or_an_unlabeled_name_is_left_alone() {
+    let scrubber = pii_scrubber();
+    for input in [
+        "lapor ke Pak RT dulu",
+        "Ibu Kota Jakarta",
+        "Bapak Ibu sekalian",
+        "tanya Bu Guru saja",
+        "Pak, tolong dicek",
+        // No label: a name in free prose needs a model, which this engine has none of.
+        "Siti Rahmawati minta cuti",
+        "Nama produk: Kopi Susu",
+        "nama: laporan-q3",
+    ] {
+        assert_eq!(scrubber.scrub(input).text, input, "{input}");
+    }
+}
+
+#[test]
+fn the_kk_row_follows_the_nik_toggle_and_the_new_rows_stand_alone() {
+    let line = "KK 3275011203120045 | BPJS 0001234567891 | rekening 5270381946 | Jl. Melati No. 17 | Pak Budi";
+    assert_eq!(default_scrubber().scrub(line).text, line);
+
+    let only_nik = crate::config::Config {
+        pii: crate::config::PiiConfig {
+            nik: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let scrubber =
+        crate::scrub::Scrubber::new(&only_nik, &crate::config::EngineConfig::default()).unwrap();
+    let result = scrubber.scrub(line);
+    assert_eq!(result.count, 1);
+    assert_eq!(result.counts_by_pattern.get("kk"), Some(&1));
+}

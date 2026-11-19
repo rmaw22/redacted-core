@@ -40,7 +40,7 @@ stdin -> cli::run_scrub -> looks_like_hook_payload?
 | `src/scrub.rs` | `Scrubber`: builds every tier, runs vendor patterns and the heuristic, writes markers. |
 | `src/scrub/learned.rs` | Learned tier: shape and exact-hash matching, `sha256_hex`, `learned_value_hint`. |
 | `src/scrub/guards.rs` | `should_skip_match`: allow lists and the guards that keep identifiers, code and URLs. |
-| `src/scrub/pii.rs` | Validators for the identity and payment PII rows: card, IBAN, SSN, NIK. |
+| `src/scrub/pii.rs` | Validators for the PII rows: card, IBAN, SSN, NIK, bank account, address, and where a labeled name ends. |
 | `src/scrub/findings.rs` | `Finding` and `MarkerLog`: where each redaction sat in the original text. |
 | `src/scrub/go_regex.rs` | `go_to_rust_regex`: rewrites Go RE2 syntax so patterns keep their 0.7 meaning under Rust `regex`. |
 | `src/scrub/benchmark.rs` | Test only (`#[cfg(test)]`): detection benchmark that plants each built-in pattern in 17 placements and writes `docs/BENCHMARK.md`. |
@@ -81,9 +81,10 @@ Other paths:
    - A name in `whitelist` is skipped.
    - `prefilters` (case-sensitive) and `prefilters_ignore_case` (against a lowercased copy) skip a regex when none of its literals appear.
    - `redact_matches` replaces each match unless `should_skip_match` keeps it.
-   - PII rows (`nik`, `npwp`, `credit_card`, `iban`, `us_ssn`, `passport`, `email`, `phone`) carry `opt_in: true` and sit last. `compile_vendor_patterns` drops each one unless its `pii` toggle is on, and `is_pii_lookalike` skips reserved domains, URL logins and numbers glued to versions, IPs or timestamps.
-   - The identity and payment rows match a shape only. The validators in `src/scrub/pii.rs` then check the fields and check digits (Luhn and network prefix, IBAN mod-97, NIK region and birth date, SSN ranges). They run before `phone`, which would otherwise take the zero-led groups of a spaced card number.
+   - PII rows (`kk`, `npwp`, `nik`, `bpjs`, `credit_card`, `iban`, `us_ssn`, `passport`, `bank_account`, `email`, `phone`, `address`, `person_name`) carry `opt_in: true` and sit last. `compile_vendor_patterns` drops each one unless its `pii` toggle is on (`kk` follows `nik`), and `is_pii_lookalike` skips reserved domains, URL logins and numbers glued to versions, IPs or timestamps.
+   - The identity and payment rows match a shape only. The validators in `src/scrub/pii.rs` then check the fields and check digits (Luhn and network prefix, IBAN mod-97, NIK region and birth date, SSN ranges). They run before `phone`, which would otherwise take the zero-led groups of a spaced card number. `kk` and `npwp` run before `nik`, which would otherwise label their 16 digits, and `person_name` runs last so `passport` can still read a name between its label and number.
    - A row whose regex names a `value` group is matched by the words before the number (`passport A1234567`, `SSN 536904399`). `matches_with_value_start` hands `redact_matches` the group's start, so the label stays and the marker and the finding cover the number alone.
+   - `person_name` matches every capitalised word after its label. `pii::name_len` then tells `redact_matches` where the name ends: before a weekday, month or company word, or nowhere when the words open with a title.
 2. Learned secrets: `scrub_learned` in `src/scrub/learned.rs`.
 3. Entropy heuristic: the `secret_value` pattern, built by `compile_heuristic` only when `heuristic.enabled` is true.
 

@@ -33,9 +33,13 @@ pii:
   credit_card: false # payment card, checked by network prefix and Luhn
   iban: false # checked by country, length and mod-97
   us_ssn: false # US Social Security number, dashed or right after the word SSN
-  nik: false # Indonesian identity number (also matches a family card number)
+  nik: false # Indonesian identity number, and a family card number after the word KK
   npwp: false # Indonesian taxpayer number, dotted or right after the word NPWP
-  passport: false # a passport number right after the word passport or paspor
+  passport: false # a passport number after the word passport or paspor
+  bpjs: false # Indonesian BPJS number right after the word BPJS, JKN or KPJ
+  bank_account: false # Indonesian bank account number after rekening or a bank's name
+  address: false # Indonesian street address: Jl./Jalan with a number, RT/RW, Kelurahan
+  person_name: false # a name after Nama:, a.n., Pak, Bu, Bapak or Ibu
 
 # Turn off vendor or engine.yml patterns by name (see the table in docs/REFERENCE.md).
 # No effect on learned secrets or the heuristic.

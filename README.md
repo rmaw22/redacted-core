@@ -77,7 +77,7 @@ Full walkthrough and flags: [Setup: `redacted init`](docs/REFERENCE.md#setup-red
 | Learned secrets | The values `redacted init` learned from your `.env`, matched by hash, plus rotated keys with the same prefix where you opt in. | on once `init` writes entries |
 | Entropy heuristic | Random-looking values in `KEY=value` lines that no other tier knows. | off |
 
-Personal data can be scrubbed too: email addresses, phone numbers, payment cards, IBANs, US Social Security numbers, passport numbers, and Indonesian NIK and NPWP numbers. Each is off until you turn it on in the config.
+Personal data can be scrubbed too: email addresses, phone numbers, payment cards, IBANs, US Social Security numbers and passport numbers, plus Indonesian NIK, KK, NPWP, BPJS and bank account numbers, street addresses, and names that follow a label such as `Nama:` or `Pak`. Each is off until you turn it on in the config.
 
 Every pattern and what it matches: [What it detects](docs/REFERENCE.md#what-it-detects).
 

@@ -127,8 +127,13 @@ const UNOWNED_EMAIL_DOMAINS: [&str; 8] = [
 fn is_pii_lookalike(pattern_name: &str, matched: &str, text: &str, start: usize) -> bool {
     let end = start + matched.len();
     match pattern_name {
-        "nik" => is_embedded_number(text, start, end) || !pii::is_nik(matched),
-        "npwp" | "passport" => is_embedded_number(text, start, end),
+        "nik" | "kk" => is_embedded_number(text, start, end) || !pii::is_nik(matched),
+        "npwp" | "bpjs" => is_embedded_number(text, start, end),
+        "passport" => {
+            is_embedded_number(text, start, end) || pii::is_passport_out_of_reach(matched)
+        }
+        "bank_account" => is_embedded_number(text, start, end) || !pii::is_bank_account(matched),
+        "address" => !pii::is_address(matched) || pii::starts_with_unit(&text[end..]),
         "credit_card" => is_embedded_number(text, start, end) || !pii::is_card_number(matched),
         "iban" => !pii::is_iban(matched),
         "us_ssn" => {
