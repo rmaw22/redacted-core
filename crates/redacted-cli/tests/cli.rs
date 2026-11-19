@@ -283,7 +283,7 @@ learned: [{name: a, sha256: ab, len: 9}, {name: db_pass, sha256: cd, len: 17, sh
     fs::write(&path, config).unwrap();
     let output = run_redacted(&dir, &["verify"], "");
     let out = stdout(&output);
-    let line = "[WARN] learned shapes - shape keeps the start of the value in plain text (db_pass); to keep only the hash, delete their shape: lines in ~/.config/redacted/config.yaml";
+    let line = "[WARN] learned shapes - db_pass: shape keeps the start of the value in plain text; fine if ticked under Also catch rotated keys, otherwise delete the shape: line in ~/.config/redacted/config.yaml";
     assert!(out.contains(line), "missing {line:?} in:\n{out}");
     assert!(
         out.contains("2 learned"),
