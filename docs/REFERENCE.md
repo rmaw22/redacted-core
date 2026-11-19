@@ -298,7 +298,7 @@ Prints one line per check and exits 1 when any check fails.
 | `test scrub` | FAIL when the built-in patterns miss a sample database URL. |
 | `learned secrets` | Config version, number of learned entries, heuristic on or off. |
 | `protection` | WARN when only vendor signatures are active. |
-| `learned shapes` | WARN, naming the entries, when learned entries hold a `shape`, which keeps the start of the value in plain text. Configs from earlier versions stored one for every prefixed value. Delete the `shape:` line to keep only the hash; `verify` never removes it. |
+| `learned shapes` | WARN, naming the entries, when learned entries hold a `shape`, which keeps the start of the value in plain text. Expected for rows ticked under `Also catch rotated keys for:`; configs from earlier versions stored one for every prefixed value. The config cannot tell the two apart. Delete the `shape:` line to keep only the hash; `verify` never removes it. |
 | `project learned` | WARN when `.redacted.yaml` holds `learned` entries, which are ignored. |
 
 ## Stats

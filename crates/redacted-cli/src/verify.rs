@@ -348,7 +348,8 @@ fn check_learned(cwd: Option<&Path>, config: &Config) -> Vec<Check> {
     out
 }
 
-/// Older inits stored a shape for every prefixed value; it is kept, only flagged.
+/// A shape is either ticked in `init` or left by an older init, which stored one
+/// for every prefixed value; the config cannot tell them apart, so it is flagged, never removed.
 fn check_learned_shapes(config: &Config) -> Option<Check> {
     let shaped: Vec<&str> = config
         .learned
@@ -363,7 +364,7 @@ fn check_learned_shapes(config: &Config) -> Option<Check> {
         "learned shapes",
         CheckStatus::Warn,
         format!(
-            "shape keeps the start of the value in plain text ({}); to keep only the hash, delete their shape: lines in ~/.config/redacted/config.yaml",
+            "{}: shape keeps the start of the value in plain text; fine if ticked under Also catch rotated keys, otherwise delete the shape: line in ~/.config/redacted/config.yaml",
             shaped.join(", ")
         ),
     ))
